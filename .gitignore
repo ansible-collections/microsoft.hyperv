@@ -1,6 +1,12 @@
 /tests/output/
 /changelogs/.plugin-cache.yaml
 
+# Claude Code
+.claude/
+.claude-*
+*.claude.md
+ROADMAP.md
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
