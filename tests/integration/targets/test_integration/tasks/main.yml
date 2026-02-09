@@ -1,0 +1,11 @@
+- name: setup Hyper-V
+  ansible.windows.win_feature:
+    name:
+    - Hyper-V
+    - RSAT-Hyper-V-Tools
+    state: present
+  register: hyperv_feature
+
+- name: reboot if Hyper-V was installed
+  ansible.windows.win_reboot:
+  when: hyperv_feature.reboot_required
