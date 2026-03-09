@@ -1,6 +1,11 @@
 /tests/output/
 /changelogs/.plugin-cache.yaml
 
+# Claude Code
+.claude/
+.claude-*
+*.claude.md
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -130,3 +135,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+docs/plans/

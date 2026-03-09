@@ -1,21 +1,16 @@
-# collection_template
-You can build a new repository for an Ansible Collection using this template by following [Creating a repository from a template](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/creating-a-repository-from-a-template). This README.md contains recommended headings for your collection README.md, with comments describing what each section should contain. Once you have created your collection repository, delete this paragraph and the title above it from your README.md.
+# Microsoft Hyper-V Collection for Ansible
 
-# Foo Collection for Ansible
-<!-- Add CI and code coverage badges here. Samples included below. -->
-[![CI](https://github.com/ansible-collections/REPONAMEHERE/workflows/CI/badge.svg?event=push)](https://github.com/ansible-collections/REPONAMEHERE/actions) [![Codecov](https://img.shields.io/codecov/c/github/ansible-collections/REPONAMEHERE)](https://codecov.io/gh/ansible-collections/REPONAMEHERE)
+[![CI](https://github.com/ansible-collections/microsoft.hyperv/workflows/CI/badge.svg?event=push)](https://github.com/ansible-collections/microsoft.hyperv/actions) [![Codecov](https://img.shields.io/codecov/c/github/ansible-collections/microsoft.hyperv)](https://codecov.io/gh/ansible-collections/microsoft.hyperv)
 
-<!-- Describe the collection and why a user would want to use it. What does the collection do? -->
+This collection provides comprehensive automation capabilities for Microsoft Hyper-V environments. It enables users to manage virtual machines, virtual networking, storage, replication, clustering, and advanced Hyper-V features through Ansible playbooks.
 
 ## Our mission
 
-<!-- Put your collection's mission statement in here. Example follows. -->
-
-At the `your collection name`, our mission is to produce and maintain simple, flexible,
-and powerful open-source software tailored to `your collection purpose`.
+At the **Microsoft Hyper-V Collection**, our mission is to produce and maintain simple, flexible,
+and powerful open-source software tailored to automating and managing Microsoft Hyper-V virtualization infrastructure.
 
 We welcome members from all skill levels to participate actively in our open, inclusive, and vibrant community.
-Whether you are an expert or just beginning your journey with Ansible and `your collection name`,
+Whether you are an expert or just beginning your journey with Ansible and Hyper-V automation,
 you are encouraged to contribute, share insights, and collaborate with fellow enthusiasts!
 
 ## Code of Conduct
@@ -26,14 +21,9 @@ If you encounter abusive behavior, please refer to the [policy violations](https
 
 ## Communication
 
-<!--
-If your collection is not present on the Ansible forum yet, please check out the existing [tags](https://forum.ansible.com/tags) and [groups](https://forum.ansible.com/g) - use what suits your collection. If there is no appropriate tag and group yet, please [request one](https://forum.ansible.com/t/requesting-a-forum-group/503/17).
--->
-
 * Join the Ansible forum:
-  * [Get Help](https://forum.ansible.com/c/help/6): get help or help others. Please add appropriate tags if you start new discussions, for example the `YOUR TAG` tag.
-  * [Posts tagged with 'your tag'](https://forum.ansible.com/tag/YOUR_TAG): subscribe to participate in collection/technology-related conversations.
-  * [Refer to your forum group here if exists](https://forum.ansible.com/g/): by joining the team you will automatically get subscribed to the posts tagged with [your group forum tag here](https://forum.ansible.com/tags).
+  * [Get Help](https://forum.ansible.com/c/help/6): get help or help others. Please add the `hyperv` tag if you start new discussions.
+  * [Posts tagged with 'hyperv'](https://forum.ansible.com/tag/hyperv): subscribe to participate in Hyper-V-related conversations.
   * [Social Spaces](https://forum.ansible.com/c/chat/4): gather and interact with fellow enthusiasts.
   * [News & Announcements](https://forum.ansible.com/c/news/5): track project-wide announcements including social events. The [Bullhorn newsletter](https://docs.ansible.com/projects/ansible/devel/community/communication.html#the-bullhorn), which is used to announce releases and important changes, can also be found here.
 
@@ -80,62 +70,195 @@ Every voice is important. If you have something on your mind, create an issue or
 
 ## Tested with Ansible
 
-<!-- List the versions of Ansible the collection has been tested with. Must match what is in galaxy.yml. -->
+This collection is tested with the most current Ansible releases.
 
 ## External requirements
 
-<!-- List any external resources the collection depends on, for example minimum versions of an OS, libraries, or utilities. Do not list other Ansible collections here. -->
+### Platform Requirements
+- **Operating System**: Windows Server 2016 or later with Hyper-V role installed
+- **PowerShell**: PowerShell 5.1 or later
+- **Hyper-V**: Hyper-V must be enabled on the target Windows host
 
 ### Supported connections
-<!-- Optional. If your collection supports only specific connection types (such as HTTPAPI, netconf, or others), list them here. -->
+This collection uses the `winrm` or `psrp` connection plugins to communicate with Windows hosts running Hyper-V.
 
 ## Included content
 
-<!-- Galaxy now usually displays full module and plugin docs within the UI. If you don't use Galaxy for your collection, you may need to either describe your plugins etc here, or point to an external docsite to cover that information. -->
+This collection includes **35 modules** (consolidated from 47 original tasks through strategic optimization) for comprehensive Hyper-V management.
+
+**Consolidation Highlights**:
+- Power management and restart operations combined into `hv_vm_state`
+- Network adapter properties (VLAN, MAC, QoS) unified in `hv_network_adapter`
+- Boot configuration consolidated for Gen1 and Gen2 VMs in `hv_vm_boot`
+- 10 total consolidations reducing module count by 26% while maintaining full functionality
+
+See [docs/plans/FINAL_MODULE_LIST.md](docs/plans/FINAL_MODULE_LIST.md) for complete consolidation analysis.
+
+### Virtual Machine Management
+- `hv_vm` - VM provisioning and deprovisioning
+- `hv_vm_state` ✨ - VM power management including start, stop, pause, save, **and restart** (consolidates restart module)
+- `hv_checkpoint` - Snapshot management
+- `hv_vm_transfer` ✨ - **Export and import** VMs (consolidates export/import modules)
+- `hv_vm_move` - Live migration
+- `hv_vm_tag` - VM tagging
+- `hv_vm_group` - VM grouping
+
+### VM Hardware Configuration
+- `hv_processor` - vCPU management
+- `hv_memory` - Dynamic RAM configuration
+- `hv_scsi_controller` - SCSI controller management
+- `hv_hard_disk` - Hard disk management
+- `hv_dvd_drive` - DVD drive management
+- `hv_network_adapter` ✨ - Network adapter configuration **including VLAN, MAC address, and QoS/bandwidth** (consolidates 4 modules)
+- `hv_com_port` - COM port configuration
+- `hv_vm_boot` ✨ - Boot configuration for **both Gen1 (BIOS) and Gen2 (firmware)** VMs (consolidates 2 modules)
+- `hv_integration_service` - Integration services management
+
+### Virtual Networking
+- `hv_vswitch` ✨ - Virtual switch management **including extensions** (consolidates 2 modules)
+- `hv_network_acl` ✨ - VM access control lists **including standard and extended ACLs** (consolidates 2 modules)
+- `hv_isolation` - Network isolation settings (VXLAN/NVGRE for SDN)
+
+### Storage Management
+- `hv_vhd` ✨ - VHD/VHDX file operations **including mount/unmount** (consolidates 2 modules)
+- `hv_storage_pool` - Storage pool management
+- `hv_san_adapter` - Fibre Channel SAN adapter management
+
+### Replication and Migration
+- `hv_replication` - Hyper-V Replica configuration (VM-level)
+- `hv_replication_server` - Replication server settings (Host-level)
+- `hv_migration_network` - Migration network configuration
+
+### Advanced Features
+- `hv_hardware_passthrough` ✨ - **GPU partitioning and Discrete Device Assignment** (consolidates 2 modules)
+- `hv_shielded_vm` - Shielded VM configuration
+- `hv_nested_virt` - Nested virtualization
+- `hv_host` ✨ - Hyper-V host configuration **including console settings** (consolidates 2 modules)
+
+### Guest Operations
+- `hv_guest` ✨ - **Execute commands and copy files** via PowerShell Direct (consolidates 2 modules)
+
+### Information Gathering
+- `hv_vm_info` - Gather VM information
+- `hv_host_info` - Gather Hyper-V host information
+
+### Clustering
+- `hv_cluster_node_maintenance` - Cluster node maintenance mode
+- `hv_cluster_group_set` - Cluster group set management
+- `hv_resource_pool` - Resource pool management
+
+**Note**: ✨ indicates consolidated modules. See [docs/plans/MODULES.md](docs/plans/MODULES.md) for deprecated module names and migration guide.
 
 ## Using this collection
-
-<!--Include some quick examples that cover the most common use cases for your collection content. It can include the following examples of installation and upgrade (change NAMESPACE.COLLECTION_NAME correspondingly):-->
 
 ### Installing the Collection from Ansible Galaxy
 
 Before using this collection, you need to install it with the Ansible Galaxy command-line tool:
 ```bash
-ansible-galaxy collection install NAMESPACE.COLLECTION_NAME
+ansible-galaxy collection install microsoft.hyperv
 ```
 
 You can also include it in a `requirements.yml` file and install it with `ansible-galaxy collection install -r requirements.yml`, using the format:
 ```yaml
 ---
 collections:
-  - name: NAMESPACE.COLLECTION_NAME
+  - name: microsoft.hyperv
 ```
 
 Note that if you install the collection from Ansible Galaxy, it will not be upgraded automatically when you upgrade the `ansible` package. To upgrade the collection to the latest available version, run the following command:
 ```bash
-ansible-galaxy collection install NAMESPACE.COLLECTION_NAME --upgrade
+ansible-galaxy collection install microsoft.hyperv --upgrade
 ```
 
 You can also install a specific version of the collection, for example, if you need to downgrade when something is broken in the latest version (please report an issue in this repository). Use the following syntax to install version `0.1.0`:
 
 ```bash
-ansible-galaxy collection install NAMESPACE.COLLECTION_NAME:==0.1.0
+ansible-galaxy collection install microsoft.hyperv:==0.1.0
 ```
 
 See [using Ansible collections](https://docs.ansible.com/projects/ansible/devel/user_guide/collections_using.html) for more details.
 
+### Example Playbook
+
+Here's a simple example of using this collection to create and start a Hyper-V VM:
+
+```yaml
+---
+- name: Manage Hyper-V Virtual Machines
+  hosts: hyperv_hosts
+  gather_facts: false
+
+  tasks:
+    - name: Create a new VM
+      microsoft.hyperv.hv_vm:
+        name: TestVM01
+        generation: 2
+        memory_startup_bytes: 2GB
+        state: present
+
+    - name: Configure VM processor
+      microsoft.hyperv.hv_processor:
+        vm_name: TestVM01
+        count: 2
+
+    - name: Add network adapter
+      microsoft.hyperv.hv_network_adapter:
+        vm_name: TestVM01
+        switch_name: External
+
+    - name: Start the VM
+      microsoft.hyperv.hv_vm_state:
+        name: TestVM01
+        state: running
+```
+
 ## Release notes
 
-See the [changelog](https://github.com/ansible-collections/REPONAMEHERE/tree/main/CHANGELOG.rst).
+See the [changelog](https://github.com/ansible-collections/microsoft.hyperv/tree/main/CHANGELOG.md).
 
 ## Roadmap
 
-<!-- Optional. Include the roadmap for this collection, and the proposed release/versioning strategy so users can anticipate the upgrade/update cycle. -->
+This collection is currently under active development. The roadmap includes:
+
+### Phase 1: Core VM Management (Epic: ACA-4728)
+- VM lifecycle operations (create, delete, start, stop, restart)
+- VM hardware configuration (CPU, memory, storage, network)
+- Checkpoint/snapshot management
+- VM import/export capabilities
+
+### Phase 2: Networking and Storage
+- Virtual switch and VLAN management
+- Advanced network features (ACLs, bandwidth management, isolation)
+- Storage pool and VHD management
+- SAN adapter integration
+
+### Phase 3: Advanced Features
+- Hyper-V Replica configuration
+- Live migration support
+- Shielded VM support
+- GPU partitioning and DDA
+- Nested virtualization
+
+### Phase 4: Clustering and Enterprise Features
+- Failover clustering integration
+- Resource pool management
+- Guest integration services
+- Enhanced monitoring and information gathering
+
+The collection follows semantic versioning. Breaking changes will only be introduced in major version releases.
 
 ## More information
 
-<!-- List out where the user can find additional information, such as working group meeting times, slack/IRC channels, or documentation for the product this collection automates. At a minimum, link to: -->
+### Collection Documentation
+- [Module Reference](MODULES.md) - Complete list of all modules and their purposes
+- [Development Roadmap](ROADMAP.md) - Detailed development plan and timeline
+- [Changelog](CHANGELOG.md) - Release notes and version history
 
+### Microsoft Hyper-V Resources
+- [Microsoft Hyper-V Documentation](https://docs.microsoft.com/en-us/windows-server/virtualization/hyper-v/hyper-v-on-windows-server)
+- [Hyper-V PowerShell Reference](https://docs.microsoft.com/en-us/powershell/module/hyper-v/)
+
+### Ansible Resources
 - [Ansible user guide](https://docs.ansible.com/projects/ansible/devel/user_guide/index.html)
 - [Ansible developer guide](https://docs.ansible.com/projects/ansible/devel/dev_guide/index.html)
 - [Ansible collections requirements](https://docs.ansible.com/projects/ansible/devel/community/collection_contributors/collection_requirements.html)
