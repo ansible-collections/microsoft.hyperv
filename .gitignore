@@ -5,7 +5,6 @@
 .claude/
 .claude-*
 *.claude.md
-ROADMAP.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -136,3 +135,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+docs/plans/

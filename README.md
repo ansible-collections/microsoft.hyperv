@@ -84,15 +84,21 @@ This collection uses the `winrm` or `psrp` connection plugins to communicate wit
 
 ## Included content
 
-This collection includes modules for comprehensive Hyper-V management:
+This collection includes **35 modules** (consolidated from 47 original tasks through strategic optimization) for comprehensive Hyper-V management.
+
+**Consolidation Highlights**:
+- Power management and restart operations combined into `hv_vm_state`
+- Network adapter properties (VLAN, MAC, QoS) unified in `hv_network_adapter`
+- Boot configuration consolidated for Gen1 and Gen2 VMs in `hv_vm_boot`
+- 10 total consolidations reducing module count by 26% while maintaining full functionality
+
+See [docs/plans/FINAL_MODULE_LIST.md](docs/plans/FINAL_MODULE_LIST.md) for complete consolidation analysis.
 
 ### Virtual Machine Management
 - `hv_vm` - VM provisioning and deprovisioning
-- `hv_vm_state` - VM power management (start, stop, save, pause)
-- `hv_vm_restart` - VM restart operations
+- `hv_vm_state` ✨ - VM power management including start, stop, pause, save, **and restart** (consolidates restart module)
 - `hv_checkpoint` - Snapshot management
-- `hv_vm_export` - Export VMs
-- `hv_vm_import` - Import VMs
+- `hv_vm_transfer` ✨ - **Export and import** VMs (consolidates export/import modules)
 - `hv_vm_move` - Live migration
 - `hv_vm_tag` - VM tagging
 - `hv_vm_group` - VM grouping
@@ -103,44 +109,34 @@ This collection includes modules for comprehensive Hyper-V management:
 - `hv_scsi_controller` - SCSI controller management
 - `hv_hard_disk` - Hard disk management
 - `hv_dvd_drive` - DVD drive management
-- `hv_network_adapter` - Network adapter configuration
+- `hv_network_adapter` ✨ - Network adapter configuration **including VLAN, MAC address, and QoS/bandwidth** (consolidates 4 modules)
 - `hv_com_port` - COM port configuration
-- `hv_firmware` - Firmware settings
-- `hv_vm_bios` - BIOS configuration
+- `hv_vm_boot` ✨ - Boot configuration for **both Gen1 (BIOS) and Gen2 (firmware)** VMs (consolidates 2 modules)
 - `hv_integration_service` - Integration services management
 
 ### Virtual Networking
-- `hv_vswitch` - Virtual switch management
-- `hv_vlan` - VLAN configuration
-- `hv_mac_address` - MAC address management
-- `hv_vm_acl` - VM access control lists
-- `hv_extended_acl` - Extended ACL management
-- `hv_bandwidth` - Bandwidth management
-- `hv_isolation` - Network isolation settings
-- `hv_switch_extension` - Virtual switch extensions
+- `hv_vswitch` ✨ - Virtual switch management **including extensions** (consolidates 2 modules)
+- `hv_network_acl` ✨ - VM access control lists **including standard and extended ACLs** (consolidates 2 modules)
+- `hv_isolation` - Network isolation settings (VXLAN/NVGRE for SDN)
 
 ### Storage Management
-- `hv_vhd_file` - VHD/VHDX file operations
-- `hv_vhd_mount` - VHD mount operations
+- `hv_vhd` ✨ - VHD/VHDX file operations **including mount/unmount** (consolidates 2 modules)
 - `hv_storage_pool` - Storage pool management
 - `hv_san_adapter` - Fibre Channel SAN adapter management
 
 ### Replication and Migration
-- `hv_replication` - Hyper-V Replica configuration
-- `hv_replication_connection` - Replication connection settings
+- `hv_replication` - Hyper-V Replica configuration (VM-level)
+- `hv_replication_server` - Replication server settings (Host-level)
 - `hv_migration_network` - Migration network configuration
 
 ### Advanced Features
-- `hv_gpu_partition` - GPU partitioning for VMs
-- `hv_dda_device` - Discrete Device Assignment
+- `hv_hardware_passthrough` ✨ - **GPU partitioning and Discrete Device Assignment** (consolidates 2 modules)
 - `hv_shielded_vm` - Shielded VM configuration
 - `hv_nested_virt` - Nested virtualization
-- `hv_vm_console` - VM console access
-- `hv_host_config` - Hyper-V host configuration
+- `hv_host` ✨ - Hyper-V host configuration **including console settings** (consolidates 2 modules)
 
 ### Guest Operations
-- `hv_guest_command` - Execute commands in guest VMs
-- `hv_guest_file_copy` - Copy files to/from guest VMs
+- `hv_guest` ✨ - **Execute commands and copy files** via PowerShell Direct (consolidates 2 modules)
 
 ### Information Gathering
 - `hv_vm_info` - Gather VM information
@@ -150,6 +146,8 @@ This collection includes modules for comprehensive Hyper-V management:
 - `hv_cluster_node_maintenance` - Cluster node maintenance mode
 - `hv_cluster_group_set` - Cluster group set management
 - `hv_resource_pool` - Resource pool management
+
+**Note**: ✨ indicates consolidated modules. See [docs/plans/MODULES.md](docs/plans/MODULES.md) for deprecated module names and migration guide.
 
 ## Using this collection
 
