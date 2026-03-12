@@ -36,6 +36,16 @@
       register: single_vm
       delegate_to: localhost
 
+    - name: Debug - Print specific VM information
+      debug:
+        msg:
+          - "Name: {{ single_vm.vms[0].name }}"
+          - "State: {{ single_vm.vms[0].state }}"
+          - "Status: {{ single_vm.vms[0].status }}"
+          - "Generation: {{ single_vm.vms[0].generation }}"
+          - "Memory (Startup): {{ single_vm.vms[0].MemoryStartup }}"
+          - "Processor Count: {{ single_vm.vms[0].ProcessorCount }}"
+
     - name: Assert single_vm returns exactly one VM and matches expected data
       assert:
         that:

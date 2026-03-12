@@ -116,7 +116,7 @@ def run_module():
     }
     $vmlist = @()
     foreach ($vm in @($vms)) {
-        $vmlist += @{
+        $vmDict = @{
             name = $vm.Name
             state = $vm.State.ToString()
             status = $vm.Status.ToString()
@@ -124,6 +124,14 @@ def run_module():
             id = $vm.Id.ToString()
             generation = $vm.Generation
         }
+        
+        # Dynamically append every other available property from the VM object
+        foreach ($prop in $vm.PSObject.Properties) {
+            if (-not $vmDict.ContainsKey($prop.Name)) {
+                $vmDict[$prop.Name] = $prop.Value
+            }
+        }
+        $vmlist += $vmDict
     }
     return $vmlist
     """)

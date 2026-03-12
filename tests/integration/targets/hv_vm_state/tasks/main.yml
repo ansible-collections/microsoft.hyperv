@@ -147,6 +147,16 @@
           - start_from_saved.changed == true
           - start_from_saved.state == 'Running'
 
+    - name: Gather info before restart
+      microsoft.hyperv.hv_vm_info:
+        name: AnsibleTestVM_State
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: pre_restart_info
+      delegate_to: localhost
+
     - name: Test restart VM
       microsoft.hyperv.hv_vm_state:
         name: AnsibleTestVM_State
@@ -158,6 +168,25 @@
         ansible_port: "{{ ansible_port | default(5985) }}"
       register: restart_vm
       delegate_to: localhost
+
+    - name: Gather info after restart
+      microsoft.hyperv.hv_vm_info:
+        name: AnsibleTestVM_State
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: post_restart_info
+      delegate_to: localhost
+
+    - name: Debug - VM status after restart
+      debug:
+        msg:
+          - "Name: {{ post_restart_info.vms[0].name }}"
+          - "State: {{ post_restart_info.vms[0].state }}"
+          - "Status: {{ post_restart_info.vms[0].status }}"
+          - "Uptime Before Restart (Seconds): {{ pre_restart_info.vms[0].uptime_seconds }}"
+          - "Uptime After Restart (Seconds): {{ post_restart_info.vms[0].uptime_seconds }}"
 
     - name: Assert restart VM was successful
       assert:
