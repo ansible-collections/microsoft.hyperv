@@ -124,7 +124,7 @@ def run_module():
             id = $vm.Id.ToString()
             generation = $vm.Generation
         }
-        
+
         # Dynamically append every other available property from the VM object
         foreach ($prop in $vm.PSObject.Properties) {
             if (-not $vmDict.ContainsKey($prop.Name)) {

@@ -57,10 +57,10 @@ class HyperVConnection:
         try:
             output, streams, had_errors = self.client.execute_ps(script)
             stdout = str(output) if output else ""
-            
+
             error_list = [str(err) for err in getattr(streams, 'error', [])]
             stderr = "\n".join(error_list)
-            
+
             rc = 1 if had_errors or error_list else 0
             return stdout, stderr, rc
         except Exception as e:
