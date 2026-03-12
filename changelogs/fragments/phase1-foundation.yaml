@@ -1,0 +1,4 @@
+---
+minor_changes:
+  - Implement foundational module_utils (`hyperv_connection`, `hyperv_core`, `hyperv_powershell`) for remote Hyper-V management via PSRP.
+  - Align collection structure with standard Ansible conventions for modules and tests.
