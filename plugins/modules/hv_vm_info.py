@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2026, Ansible Cloud Team
+# Copyright (c) 2026, Ansible Cloud Team (@ansible)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -36,7 +36,7 @@ options:
     type: int
     default: 5985
 author:
-  - Ansible Cloud Team
+  - Ansible Cloud Team (@ansible)
 '''
 
 EXAMPLES = r'''

@@ -1,0 +1,218 @@
+---
+- name: Setup - Create a temporary dummy VM for testing
+  ansible.windows.win_powershell:
+    script: |
+      $vmName = "AnsibleTestVM_State"
+      if (-not (Get-VM -Name $vmName -ErrorAction SilentlyContinue)) {
+          New-VM -Name $vmName -MemoryStartupBytes 512MB -Generation 2
+      }
+  register: setup_vm
+
+- block:
+    - name: Test error handling - action on non-existent VM
+      microsoft.hyperv.hv_vm_state:
+        name: DoesNotExist999
+        state: running
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: none_vm
+      delegate_to: localhost
+      ignore_errors: true
+
+    - name: Assert non-existent VM returns failure
+      assert:
+        that:
+          - none_vm.failed == true
+          - "'not found' in none_vm.msg"
+
+    - name: Test start VM (initial change)
+      microsoft.hyperv.hv_vm_state:
+        name: AnsibleTestVM_State
+        state: running
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: start_vm
+      delegate_to: localhost
+
+    - name: Assert start VM was successful
+      assert:
+        that:
+          - start_vm.changed == true
+          - start_vm.state == 'Running'
+
+    - name: Test start VM (idempotency)
+      microsoft.hyperv.hv_vm_state:
+        name: AnsibleTestVM_State
+        state: running
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: start_vm_idem
+      delegate_to: localhost
+
+    - name: Assert start VM is idempotent
+      assert:
+        that:
+          - start_vm_idem.changed == false
+          - start_vm_idem.state == 'Running'
+
+    - name: Test pause VM
+      microsoft.hyperv.hv_vm_state:
+        name: AnsibleTestVM_State
+        state: paused
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: pause_vm
+      delegate_to: localhost
+
+    - name: Assert pause VM was successful
+      assert:
+        that:
+          - pause_vm.changed == true
+          - pause_vm.state == 'Paused'
+
+    - name: Test start VM from paused
+      microsoft.hyperv.hv_vm_state:
+        name: AnsibleTestVM_State
+        state: running
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: start_from_paused
+      delegate_to: localhost
+
+    - name: Assert start from paused was successful
+      assert:
+        that:
+          - start_from_paused.changed == true
+          - start_from_paused.state == 'Running'
+
+    - name: Test stop VM in check_mode
+      microsoft.hyperv.hv_vm_state:
+        name: AnsibleTestVM_State
+        state: stopped
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      check_mode: true
+      register: check_stop_vm
+      delegate_to: localhost
+
+    - name: Assert check_mode reports changed and expected state
+      assert:
+        that:
+          - check_stop_vm.changed == true
+          - check_stop_vm.state == 'Off'
+
+    - name: Test save VM
+      microsoft.hyperv.hv_vm_state:
+        name: AnsibleTestVM_State
+        state: saved
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: save_vm
+      delegate_to: localhost
+
+    - name: Assert save VM was successful
+      assert:
+        that:
+          - save_vm.changed == true
+          - save_vm.state == 'Saved'
+
+    - name: Test start VM from saved
+      microsoft.hyperv.hv_vm_state:
+        name: AnsibleTestVM_State
+        state: running
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: start_from_saved
+      delegate_to: localhost
+
+    - name: Assert start from saved was successful
+      assert:
+        that:
+          - start_from_saved.changed == true
+          - start_from_saved.state == 'Running'
+
+    - name: Test restart VM
+      microsoft.hyperv.hv_vm_state:
+        name: AnsibleTestVM_State
+        state: restarted
+        force: true
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: restart_vm
+      delegate_to: localhost
+
+    - name: Assert restart VM was successful
+      assert:
+        that:
+          - restart_vm.changed == true
+          - restart_vm.state == 'Running'
+
+    - name: Test stop VM
+      microsoft.hyperv.hv_vm_state:
+        name: AnsibleTestVM_State
+        state: stopped
+        force: true
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: stop_vm
+      delegate_to: localhost
+
+    - name: Assert stop VM was successful
+      assert:
+        that:
+          - stop_vm.changed == true
+          - stop_vm.state == 'Off'
+
+    - name: Test stop VM (idempotency)
+      microsoft.hyperv.hv_vm_state:
+        name: AnsibleTestVM_State
+        state: stopped
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: stop_vm_idem
+      delegate_to: localhost
+
+    - name: Assert stop VM is idempotent
+      assert:
+        that:
+          - stop_vm_idem.changed == false
+          - stop_vm_idem.state == 'Off'
+
+  always:
+    - name: Teardown - Stop temporary dummy VM
+      ansible.windows.win_powershell:
+        script: |
+          $vmName = "AnsibleTestVM_State"
+          if (Get-VM -Name $vmName -ErrorAction SilentlyContinue) {
+              Stop-VM -Name $vmName -TurnOff -Force -ErrorAction SilentlyContinue
+          }
+
+    - name: Teardown - Remove temporary dummy VM
+      ansible.windows.win_powershell:
+        script: |
+          $vmName = "AnsibleTestVM_State"
+          if (Get-VM -Name $vmName -ErrorAction SilentlyContinue) {
+              Remove-VM -Name $vmName -Force -ErrorAction SilentlyContinue
+          }
