@@ -55,7 +55,13 @@ class HyperVConnection:
         Returns a tuple of (stdout, stderr, return_code).
         """
         try:
-            stdout, stderr, rc = self.client.execute_ps(script)
+            output, streams, had_errors = self.client.execute_ps(script)
+            stdout = str(output) if output else ""
+
+            error_list = [str(err) for err in getattr(streams, 'error', [])]
+            stderr = "\n".join(error_list)
+
+            rc = 1 if had_errors or error_list else 0
             return stdout, stderr, rc
         except Exception as e:
             self.module.fail_json(msg="Error executing PowerShell script: {0}".format(str(e)))

@@ -1,0 +1,98 @@
+---
+- name: Setup - Create a temporary dummy VM for testing
+  ansible.windows.win_powershell:
+    script: |
+      $vmName = "AnsibleTestVM_Info"
+      if (-not (Get-VM -Name $vmName -ErrorAction SilentlyContinue)) {
+          New-VM -Name $vmName -MemoryStartupBytes 512MB -Generation 2
+      }
+  register: setup_vm
+
+- block:
+    - name: Test gather all VMs (Should include the one we just created)
+      microsoft.hyperv.hv_vm_info:
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: all_vms
+      delegate_to: localhost
+
+    - name: Assert all_vms returns a list and changed is false
+      assert:
+        that:
+          - all_vms.changed == false
+          - all_vms.vms is defined
+          - all_vms.vms | type_debug == "list"
+          - (all_vms.vms | selectattr('name', 'equalto', 'AnsibleTestVM_Info') | list | length) > 0
+
+    - name: Test gather specific VM
+      microsoft.hyperv.hv_vm_info:
+        name: AnsibleTestVM_Info
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: single_vm
+      delegate_to: localhost
+
+    - name: Debug - Print specific VM information
+      debug:
+        msg:
+          - "Name: {{ single_vm.vms[0].name }}"
+          - "State: {{ single_vm.vms[0].state }}"
+          - "Status: {{ single_vm.vms[0].status }}"
+          - "Generation: {{ single_vm.vms[0].generation }}"
+          - "Memory (Startup): {{ single_vm.vms[0].MemoryStartup }}"
+          - "Processor Count: {{ single_vm.vms[0].ProcessorCount }}"
+
+    - name: Assert single_vm returns exactly one VM and matches expected data
+      assert:
+        that:
+          - single_vm.changed == false
+          - single_vm.vms | length == 1
+          - single_vm.vms[0].name == 'AnsibleTestVM_Info'
+          - single_vm.vms[0].generation == 2
+          - single_vm.vms[0].state == 'Off'
+
+    - name: Test check_mode for specific VM
+      microsoft.hyperv.hv_vm_info:
+        name: AnsibleTestVM_Info
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      check_mode: true
+      register: check_vm
+      delegate_to: localhost
+
+    - name: Assert check_mode returns same data
+      assert:
+        that:
+          - check_vm.changed == false
+          - check_vm.vms | length == 1
+
+    - name: Test gather non-existent VM
+      microsoft.hyperv.hv_vm_info:
+        name: DoesNotExist999
+        ansible_host: "{{ ansible_host | default('localhost') }}"
+        ansible_user: "{{ ansible_user | default('admin') }}"
+        ansible_password: "{{ ansible_password | default('password') }}"
+        ansible_port: "{{ ansible_port | default(5985) }}"
+      register: none_vm
+      delegate_to: localhost
+
+    - name: Assert non-existent VM returns empty list
+      assert:
+        that:
+          - none_vm.changed == false
+          - none_vm.vms | length == 0
+
+  always:
+    - name: Teardown - Remove temporary dummy VM
+      ansible.windows.win_powershell:
+        script: |
+          $vmName = "AnsibleTestVM_Info"
+          if (Get-VM -Name $vmName -ErrorAction SilentlyContinue) {
+              Remove-VM -Name $vmName -Force -ErrorAction SilentlyContinue
+          }
