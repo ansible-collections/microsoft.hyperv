@@ -1,23 +1,16 @@
 ---
 - name: Setup - Create a temporary dummy VM for testing
-  ansible.windows.win_powershell:
-    script: |
-      $vmName = "AnsibleTestVM_Info"
-      if (-not (Get-VM -Name $vmName -ErrorAction SilentlyContinue)) {
-          New-VM -Name $vmName -MemoryStartupBytes 512MB -Generation 2
-      }
+  microsoft.hyperv.hv_vm:
+    name: AnsibleTestVM_Info
+    state: present
+    generation: 2
+    memory_startup_bytes: "512MB"
   register: setup_vm
 
 - block:
     - name: Test gather all VMs (Should include the one we just created)
       microsoft.hyperv.hv_vm_info:
-        ansible_host: "{{ ansible_host | default('localhost') }}"
-        ansible_user: "{{ ansible_user | default('admin') }}"
-        ansible_password: "{{ ansible_password | default('password') }}"
-        ansible_port: "{{ ansible_port | default(5985) }}"
       register: all_vms
-      delegate_to: localhost
-
     - name: Assert all_vms returns a list and changed is false
       assert:
         that:
@@ -29,13 +22,7 @@
     - name: Test gather specific VM
       microsoft.hyperv.hv_vm_info:
         name: AnsibleTestVM_Info
-        ansible_host: "{{ ansible_host | default('localhost') }}"
-        ansible_user: "{{ ansible_user | default('admin') }}"
-        ansible_password: "{{ ansible_password | default('password') }}"
-        ansible_port: "{{ ansible_port | default(5985) }}"
       register: single_vm
-      delegate_to: localhost
-
     - name: Debug - Print specific VM information
       debug:
         msg:
@@ -58,14 +45,8 @@
     - name: Test check_mode for specific VM
       microsoft.hyperv.hv_vm_info:
         name: AnsibleTestVM_Info
-        ansible_host: "{{ ansible_host | default('localhost') }}"
-        ansible_user: "{{ ansible_user | default('admin') }}"
-        ansible_password: "{{ ansible_password | default('password') }}"
-        ansible_port: "{{ ansible_port | default(5985) }}"
       check_mode: true
       register: check_vm
-      delegate_to: localhost
-
     - name: Assert check_mode returns same data
       assert:
         that:
@@ -75,13 +56,7 @@
     - name: Test gather non-existent VM
       microsoft.hyperv.hv_vm_info:
         name: DoesNotExist999
-        ansible_host: "{{ ansible_host | default('localhost') }}"
-        ansible_user: "{{ ansible_user | default('admin') }}"
-        ansible_password: "{{ ansible_password | default('password') }}"
-        ansible_port: "{{ ansible_port | default(5985) }}"
       register: none_vm
-      delegate_to: localhost
-
     - name: Assert non-existent VM returns empty list
       assert:
         that:
@@ -90,9 +65,7 @@
 
   always:
     - name: Teardown - Remove temporary dummy VM
-      ansible.windows.win_powershell:
-        script: |
-          $vmName = "AnsibleTestVM_Info"
-          if (Get-VM -Name $vmName -ErrorAction SilentlyContinue) {
-              Remove-VM -Name $vmName -Force -ErrorAction SilentlyContinue
-          }
+      microsoft.hyperv.hv_vm:
+        name: AnsibleTestVM_Info
+        state: absent
+      ignore_errors: true
