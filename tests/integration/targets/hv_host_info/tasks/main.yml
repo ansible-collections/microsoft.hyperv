@@ -1,0 +1,19 @@
+---
+- name: Gather facts about the Hyper-V host
+  microsoft.hyperv.hv_host_info:
+  register: host_facts
+
+- name: Assert hv_host_info structure
+  assert:
+    that:
+      - host_facts.changed == false
+      - host_facts.host_info is defined
+      - host_facts.host_info.os is defined
+      - host_facts.host_info.os.caption is defined
+      - host_facts.host_info.memory is defined
+      - host_facts.host_info.memory.total_bytes > 0
+      - host_facts.host_info.processors | length > 0
+      - host_facts.host_info.processors[0].name is defined
+      - host_facts.host_info.hyperv is defined
+      - host_facts.host_info.hyperv.name is defined
+      - host_facts.host_info.virtual_switches is defined
