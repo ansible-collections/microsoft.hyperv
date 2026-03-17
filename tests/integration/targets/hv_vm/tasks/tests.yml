@@ -1,0 +1,145 @@
+---
+# 1. Generation 2 with specific RAM and BootDevice
+- name: Define test VM name (Gen2 Exhaustive)
+  set_fact:
+    test_vm_full_g2: "AnsibleTest_Full_G2_{{ 99999 | random }}"
+
+- block:
+    - name: Create Gen2 VM with BootDevice
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_full_g2 }}"
+        state: present
+        generation: 2
+        memory_startup_bytes: "256MB"
+        boot_device: VHD
+      register: result_full_g2
+
+    - name: Gather VM info
+      microsoft.hyperv.hv_vm_info:
+        name: "{{ test_vm_full_g2 }}"
+      register: info_full_g2
+
+    - name: Assert Gen2 properties
+      assert:
+        that:
+          - result_full_g2.changed == true
+          - info_full_g2.vms[0].generation == 2
+          - info_full_g2.vms[0].MemoryStartup == 268435456
+
+    - name: Remove Gen2 VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_full_g2 }}"
+        state: absent
+  always:
+    - name: Cleanup Gen2
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_full_g2 }}"
+        state: absent
+      ignore_errors: true
+
+# 2. Defaults Test (No RAM, No Generation)
+- name: Define test VM name (Defaults)
+  set_fact:
+    test_vm_defaults: "AnsibleTest_Def_{{ 99999 | random }}"
+
+- block:
+    - name: Create VM using pure defaults
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_defaults }}"
+        state: present
+
+    - name: Gather VM info
+      microsoft.hyperv.hv_vm_info:
+        name: "{{ test_vm_defaults }}"
+      register: info_defaults
+
+    - name: Assert default properties (Gen 1, 1GB RAM)
+      assert:
+        that:
+          - info_defaults.vms[0].generation == 1
+          - info_defaults.vms[0].MemoryStartup == 1073741824
+
+  always:
+    - name: Cleanup Defaults VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_defaults }}"
+        state: absent
+      ignore_errors: true
+
+# 3. Removal of a Running VM (Logic Branch Test)
+- name: Define test VM name (Running Removal)
+  set_fact:
+    test_vm_running: "AnsibleTest_Run_{{ 99999 | random }}"
+
+- block:
+    - name: Create VM for running test (Lower memory for startup)
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_running }}"
+        state: present
+        memory_startup_bytes: "256MB"
+
+    - name: Start the VM using hv_vm_state
+      microsoft.hyperv.hv_vm_state:
+        name: "{{ test_vm_running }}"
+        state: running
+
+    - name: Remove the RUNNING VM (Should trigger Stop-VM logic)
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_running }}"
+        state: absent
+      register: result_running_remove
+
+    - name: Assert removal was successful
+      assert:
+        that:
+          - result_running_remove.changed == true
+          - result_running_remove.state == 'absent'
+
+  always:
+    - name: Cleanup Running VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_running }}"
+        state: absent
+      ignore_errors: true
+
+# 4. Idempotency and Check Mode
+- name: Define test VM name (Generic Logic)
+  set_fact:
+    test_vm_logic: "AnsibleTest_Logic_{{ 99999 | random }}"
+
+- block:
+    - name: Create VM (actual)
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_logic }}"
+        state: present
+
+    - name: Create VM again (idempotency)
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_logic }}"
+        state: present
+      register: result_idem
+
+    - name: Assert idempotency
+      assert:
+        that:
+          - result_idem.changed == false
+
+    - name: Remove VM (check mode)
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_logic }}"
+        state: absent
+      check_mode: true
+      register: result_check_absent
+
+    - name: Assert check mode absent
+      assert:
+        that:
+          - result_check_absent.changed == true
+          - result_check_absent.state == 'absent'
+
+  always:
+    - name: Cleanup Logic VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_logic }}"
+        state: absent
+      ignore_errors: true

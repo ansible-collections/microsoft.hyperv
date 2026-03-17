@@ -1,0 +1,18 @@
+---
+- name: Define test VM name
+  set_fact:
+    test_vm_name: "AnsibleTestVM_{{ 99999 | random }}"
+
+- name: Run hv_vm integration tests
+  module_defaults:
+    microsoft.hyperv.hv_vm:
+      name: "{{ test_vm_name }}"
+  block:
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Ensure test VM is removed (cleanup)
+      microsoft.hyperv.hv_vm:
+        state: absent
+      ignore_errors: true
