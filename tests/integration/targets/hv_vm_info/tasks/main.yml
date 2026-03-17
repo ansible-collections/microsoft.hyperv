@@ -4,7 +4,7 @@
     name: AnsibleTestVM_Info
     state: present
     generation: 2
-    memory_startup_bytes: "512MB"
+    memory_startup_bytes: "256MB"
   register: setup_vm
 
 - block:
