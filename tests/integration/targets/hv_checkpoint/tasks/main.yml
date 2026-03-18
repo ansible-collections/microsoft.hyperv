@@ -1,0 +1,23 @@
+---
+- name: Define Gen1 Test VM Name for Checkpoints
+  set_fact:
+    test_vm_snap: "AnsibleTestSnap_{{ 99999 | random }}"
+
+- name: Setup - Create temporary Gen1 VM
+  block:
+    - name: Create VM for Checkpoints
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_snap }}"
+        state: present
+        generation: 1
+        memory_startup_bytes: "256MB"
+
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_snap }}"
+        state: absent
+      ignore_errors: true
