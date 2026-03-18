@@ -1,0 +1,102 @@
+---
+- name: Test - Create Checkpoint
+  microsoft.hyperv.hv_checkpoint:
+    vm_name: "{{ test_vm_snap }}"
+    name: "Initial-State"
+    state: present
+  register: create_snap
+
+- name: Assert Checkpoint created
+  assert:
+    that:
+      - create_snap.changed == true
+      - create_snap.state == 'present'
+      - create_snap.checkpoint.id is defined
+      - create_snap.checkpoint.creation_time is defined
+
+- name: Test - Idempotency Create Checkpoint
+  microsoft.hyperv.hv_checkpoint:
+    vm_name: "{{ test_vm_snap }}"
+    name: "Initial-State"
+    state: present
+  register: create_idem
+
+- name: Assert Create Idempotency
+  assert:
+    that:
+      - create_idem.changed == false
+
+- name: Create second checkpoint to change state
+  microsoft.hyperv.hv_checkpoint:
+    vm_name: "{{ test_vm_snap }}"
+    name: "Secondary-State"
+    state: present
+
+- name: Test - Revert Checkpoint
+  microsoft.hyperv.hv_checkpoint:
+    vm_name: "{{ test_vm_snap }}"
+    name: "Initial-State"
+    state: reverted
+  register: revert_snap
+
+- name: Assert Revert Checkpoint
+  assert:
+    that:
+      - revert_snap.changed == true
+      - revert_snap.state == 'reverted'
+
+- name: Test - Idempotency Revert Checkpoint
+  microsoft.hyperv.hv_checkpoint:
+    vm_name: "{{ test_vm_snap }}"
+    name: "Initial-State"
+    state: reverted
+  register: revert_idem
+
+- name: Assert Revert Idempotency
+  assert:
+    that:
+      - revert_idem.changed == false
+
+- name: Test - Remove Checkpoint
+  microsoft.hyperv.hv_checkpoint:
+    vm_name: "{{ test_vm_snap }}"
+    name: "Secondary-State"
+    state: absent
+  register: remove_snap
+
+- name: Assert Remove Checkpoint
+  assert:
+    that:
+      - remove_snap.changed == true
+      - remove_snap.state == 'absent'
+
+- name: Test - Remove Checkpoint (Idempotency)
+  microsoft.hyperv.hv_checkpoint:
+    vm_name: "{{ test_vm_snap }}"
+    name: "Secondary-State"
+    state: absent
+  register: remove_idem
+
+- name: Assert Remove Checkpoint (Idempotency)
+  assert:
+    that:
+      - remove_idem.changed == false
+
+- name: Test - Remove Applied Checkpoint
+  microsoft.hyperv.hv_checkpoint:
+    vm_name: "{{ test_vm_snap }}"
+    name: "Initial-State"
+    state: absent
+
+- name: Test Error - Revert Missing Checkpoint
+  microsoft.hyperv.hv_checkpoint:
+    vm_name: "{{ test_vm_snap }}"
+    name: "Initial-State"
+    state: reverted
+  register: revert_missing
+  ignore_errors: true
+
+- name: Assert Revert Missing Checkpoint Failed
+  assert:
+    that:
+      - revert_missing.failed == true
