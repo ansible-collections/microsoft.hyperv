@@ -1,0 +1,37 @@
+---
+- name: Define Gen1 and Gen2 Test VM Names
+  set_fact:
+    test_gen1: "AnsibleTestBoot_Gen1_{{ 99999 | random }}"
+    test_gen2: "AnsibleTestBoot_Gen2_{{ 99999 | random }}"
+
+- name: Setup - Create temporary Gen1 and Gen2 VMs
+  block:
+    - name: Create Gen1 VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_gen1 }}"
+        state: present
+        generation: 1
+        memory_startup_bytes: "256MB"
+
+    - name: Create Gen2 VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_gen2 }}"
+        state: present
+        generation: 2
+        memory_startup_bytes: "256MB"
+
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove Gen1 VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_gen1 }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Teardown - Remove Gen2 VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_gen2 }}"
+        state: absent
+      ignore_errors: true

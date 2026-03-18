@@ -1,0 +1,120 @@
+---
+- name: Test Gen1 - Set NumLock and StartupOrder (Check Mode)
+  microsoft.hyperv.hv_vm_boot:
+    name: "{{ test_gen1 }}"
+    num_lock: true
+    startup_order:
+      - CD
+      - IDE
+  check_mode: true
+  register: boot_gen1_check
+
+- name: Assert Gen1 check_mode modifications
+  assert:
+    that:
+      - boot_gen1_check.changed == true
+      - boot_gen1_check.generation == 1
+      - boot_gen1_check.num_lock == true
+      - boot_gen1_check.startup_order[0] == "CD"
+      - boot_gen1_check.startup_order[1] == "IDE"
+      - boot_gen1_check.startup_order | length == 4
+
+- name: Test Gen1 - Set NumLock and StartupOrder
+  microsoft.hyperv.hv_vm_boot:
+    name: "{{ test_gen1 }}"
+    num_lock: true
+    startup_order:
+      - CD
+      - IDE
+  register: boot_gen1
+
+- name: Assert Gen1 modifications
+  assert:
+    that:
+      - boot_gen1.changed == true
+      - boot_gen1.generation == 1
+      - boot_gen1.num_lock == true
+      - boot_gen1.startup_order[0] == "CD"
+      - boot_gen1.startup_order[1] == "IDE"
+      - boot_gen1.startup_order | length == 4
+
+- name: Test Gen1 - Idempotency
+  microsoft.hyperv.hv_vm_boot:
+    name: "{{ test_gen1 }}"
+    num_lock: true
+    startup_order:
+      - CD
+      - IDE
+  register: boot_gen1_idem
+
+- name: Assert Gen1 Idempotency
+  assert:
+    that:
+      - boot_gen1_idem.changed == false
+
+- name: Test Gen1 - Gen2 Parameter Error
+  microsoft.hyperv.hv_vm_boot:
+    name: "{{ test_gen1 }}"
+    secure_boot: true
+  register: boot_gen1_err
+  ignore_errors: true
+
+- name: Assert Gen1 - Gen2 Parameter Error handling
+  assert:
+    that:
+      - boot_gen1_err.failed == true
+
+- name: Test Gen2 - Set SecureBoot (Check Mode)
+  microsoft.hyperv.hv_vm_boot:
+    name: "{{ test_gen2 }}"
+    secure_boot: true
+    secure_boot_template: MicrosoftUEFICertificateAuthority
+  check_mode: true
+  register: boot_gen2_check
+
+- name: Assert Gen2 check_mode modifications
+  assert:
+    that:
+      - boot_gen2_check.changed == true
+      - boot_gen2_check.generation == 2
+      - boot_gen2_check.secure_boot == true
+      - boot_gen2_check.secure_boot_template == "MicrosoftUEFICertificateAuthority"
+
+- name: Test Gen2 - Set SecureBoot
+  microsoft.hyperv.hv_vm_boot:
+    name: "{{ test_gen2 }}"
+    secure_boot: true
+    secure_boot_template: MicrosoftUEFICertificateAuthority
+  register: boot_gen2
+
+- name: Assert Gen2 modifications
+  assert:
+    that:
+      - boot_gen2.changed == true
+      - boot_gen2.generation == 2
+      - boot_gen2.secure_boot == true
+      - boot_gen2.secure_boot_template == "MicrosoftUEFICertificateAuthority"
+
+- name: Test Gen2 - Idempotency
+  microsoft.hyperv.hv_vm_boot:
+    name: "{{ test_gen2 }}"
+    secure_boot: true
+    secure_boot_template: MicrosoftUEFICertificateAuthority
+  register: boot_gen2_idem
+
+- name: Assert Gen2 Idempotency
+  assert:
+    that:
+      - boot_gen2_idem.changed == false
+
+- name: Test Gen2 - Gen1 Parameter Error
+  microsoft.hyperv.hv_vm_boot:
+    name: "{{ test_gen2 }}"
+    num_lock: true
+  register: boot_gen2_err
+  ignore_errors: true
+
+- name: Assert Gen2 - Gen1 Parameter Error handling
+  assert:
+    that:
+      - boot_gen2_err.failed == true
