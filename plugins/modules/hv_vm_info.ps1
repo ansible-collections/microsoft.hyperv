@@ -41,6 +41,8 @@ try {
             generation = $vm.Generation
             MemoryStartup = $vm.MemoryStartup
             ProcessorCount = $vm.ProcessorCount
+            ConfigurationLocation = $vm.ConfigurationLocation
+            Path = $vm.Path
         }
         $vmlist += $vmDict
     }
