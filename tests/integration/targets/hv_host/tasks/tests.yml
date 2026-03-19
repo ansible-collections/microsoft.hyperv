@@ -1,0 +1,145 @@
+---
+- name: Gather current host facts to restore later
+  microsoft.hyperv.hv_host_info:
+  register: initial_host_facts
+
+- name: Set facts for initial state
+  set_fact:
+    orig_vm_path: "{{ initial_host_facts.host_info.hyperv.virtual_machine_path }}"
+    orig_vhd_path: "{{ initial_host_facts.host_info.hyperv.virtual_hard_disk_path }}"
+    orig_numa: "{{ initial_host_facts.host_info.hyperv.numa_spanning_enabled | default(true) }}"
+    orig_esm: "{{ initial_host_facts.host_info.os.enable_enhanced_session_mode | default(false) }}"
+
+- block:
+    - name: Create temporary test directories
+      ansible.windows.win_file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - "{{ test_vm_path }}"
+        - "{{ test_vhd_path }}"
+
+    # 1. REQUIREMENT: virtual_machine_path & virtual_hard_disk_path
+    - name: REQUIREMENT - Default Paths (Check Mode)
+      microsoft.hyperv.hv_host:
+        virtual_machine_path: "{{ test_vm_path }}"
+        virtual_hard_disk_path: "{{ test_vhd_path }}"
+      check_mode: true
+      register: path_check
+
+    - name: VERIFY - Paths Check Mode Forecasts Success
+      assert:
+        that:
+          - path_check.changed == true
+          - path_check.virtual_machine_path == test_vm_path
+          - path_check.virtual_hard_disk_path == test_vhd_path
+
+    - name: REQUIREMENT - Default Paths (Initial Change)
+      microsoft.hyperv.hv_host:
+        virtual_machine_path: "{{ test_vm_path }}"
+        virtual_hard_disk_path: "{{ test_vhd_path }}"
+      register: path_change
+
+    - name: VERIFY - Paths Change Success
+      assert:
+        that:
+          - path_change.changed == true
+          - path_change.virtual_machine_path == test_vm_path
+          - path_change.virtual_hard_disk_path == test_vhd_path
+
+    - name: REQUIREMENT - Default Paths (Idempotency - Nothing to do)
+      microsoft.hyperv.hv_host:
+        virtual_machine_path: "{{ test_vm_path }}"
+        virtual_hard_disk_path: "{{ test_vhd_path }}"
+      register: path_idem
+
+    - name: VERIFY - Paths Idempotency
+      assert:
+        that:
+          - path_idem.changed == false
+
+    # 2. REQUIREMENT: numa_spanning_enabled
+    - name: REQUIREMENT - NUMA Spanning (Toggle Change)
+      microsoft.hyperv.hv_host:
+        numa_spanning_enabled: "{{ not orig_numa }}"
+      register: numa_change
+
+    - name: VERIFY - NUMA Toggle Success
+      assert:
+        that:
+          - numa_change.changed == true
+          - numa_change.numa_spanning_enabled == (not orig_numa)
+
+    - name: REQUIREMENT - NUMA Spanning (Idempotency - Nothing to do)
+      microsoft.hyperv.hv_host:
+        numa_spanning_enabled: "{{ not orig_numa }}"
+      register: numa_idem
+
+    - name: VERIFY - NUMA Idempotency
+      assert:
+        that:
+          - numa_idem.changed == false
+
+    # 3. REQUIREMENT: enable_enhanced_session_mode
+    - name: REQUIREMENT - Enhanced Session Mode (Toggle Change)
+      microsoft.hyperv.hv_host:
+        enable_enhanced_session_mode: true
+      register: esm_change
+
+    - name: VERIFY - ESM Toggle Success
+      assert:
+        that:
+          - esm_change.changed == true
+          - esm_change.enable_enhanced_session_mode == true
+
+    - name: REQUIREMENT - Enhanced Session Mode (Idempotency - Nothing to do)
+      microsoft.hyperv.hv_host:
+        enable_enhanced_session_mode: true
+      register: esm_idem
+
+    - name: VERIFY - ESM Idempotency
+      assert:
+        that:
+          - esm_idem.changed == false
+
+    # 4. FUNCTIONAL REQUIREMENT: Verify new VM uses new default paths
+    - name: FUNCTIONAL TEST - Create VM relying on new Host Defaults
+      microsoft.hyperv.hv_vm:
+        name: "Ansible_Path_Test_VM"
+        state: present
+        generation: 2
+      register: path_test_vm
+
+    - name: GATHER - VM Info for path verification
+      microsoft.hyperv.hv_vm_info:
+        name: "Ansible_Path_Test_VM"
+      register: path_vm_info
+
+    - name: VERIFY - VM was created in the new default path
+      assert:
+        that:
+          - path_vm_info.vms[0].ConfigurationLocation.startswith(test_vm_path)
+
+  always:
+    - name: Teardown - Remove Functional Test VM
+      microsoft.hyperv.hv_vm:
+        name: "Ansible_Path_Test_VM"
+        state: absent
+      ignore_errors: true
+
+    - name: Teardown - Restore Initial Host Configuration
+      microsoft.hyperv.hv_host:
+        virtual_machine_path: "{{ orig_vm_path }}"
+        virtual_hard_disk_path: "{{ orig_vhd_path }}"
+        numa_spanning_enabled: "{{ orig_numa }}"
+        enable_enhanced_session_mode: "{{ orig_esm }}"
+      ignore_errors: true
+
+    - name: Teardown - Remove temporary test directories
+      ansible.windows.win_file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ test_vm_path }}"
+        - "{{ test_vhd_path }}"
+      ignore_errors: true
