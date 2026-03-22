@@ -1,0 +1,113 @@
+---
+- name: Test - Attach hard disk (Check Mode)
+  microsoft.hyperv.hv_hard_disk:
+    vm_name: "{{ test_vm_name }}"
+    path: "{{ test_vhd_path }}"
+    state: present
+    controller_type: SCSI
+  check_mode: true
+  register: disk_attach_check
+
+- name: Assert Attach Check Mode
+  assert:
+    that:
+      - disk_attach_check.changed == true
+      - disk_attach_check.state == 'present'
+
+- name: Test - Attach hard disk
+  microsoft.hyperv.hv_hard_disk:
+    vm_name: "{{ test_vm_name }}"
+    path: "{{ test_vhd_path }}"
+    state: present
+    controller_type: SCSI
+  register: disk_attach
+
+- name: Assert Attach
+  assert:
+    that:
+      - disk_attach.changed == true
+      - disk_attach.state == 'present'
+      - disk_attach.controller_type == 'SCSI'
+
+- name: Test - Idempotency (Attach)
+  microsoft.hyperv.hv_hard_disk:
+    vm_name: "{{ test_vm_name }}"
+    path: "{{ test_vhd_path }}"
+    state: present
+    controller_type: SCSI
+  register: disk_attach_idem
+
+- name: Assert Idempotency (Attach)
+  assert:
+    that:
+      - disk_attach_idem.changed == false
+
+- name: Test - Change Controller Location (Check Mode)
+  microsoft.hyperv.hv_hard_disk:
+    vm_name: "{{ test_vm_name }}"
+    path: "{{ test_vhd_path }}"
+    state: present
+    controller_type: SCSI
+    controller_location: 5
+  check_mode: true
+  register: disk_move_check
+
+- name: Assert Move Check Mode
+  assert:
+    that:
+      - disk_move_check.changed == true
+      - disk_move_check.controller_location == 5
+
+- name: Test - Change Controller Location
+  microsoft.hyperv.hv_hard_disk:
+    vm_name: "{{ test_vm_name }}"
+    path: "{{ test_vhd_path }}"
+    state: present
+    controller_type: SCSI
+    controller_location: 5
+  register: disk_move
+
+- name: Assert Move
+  assert:
+    that:
+      - disk_move.changed == true
+      - disk_move.controller_location == 5
+
+- name: Test - Detach hard disk (Check Mode)
+  microsoft.hyperv.hv_hard_disk:
+    vm_name: "{{ test_vm_name }}"
+    path: "{{ test_vhd_path }}"
+    state: absent
+  check_mode: true
+  register: disk_detach_check
+
+- name: Assert Detach Check Mode
+  assert:
+    that:
+      - disk_detach_check.changed == true
+      - disk_detach_check.state == 'absent'
+
+- name: Test - Detach hard disk
+  microsoft.hyperv.hv_hard_disk:
+    vm_name: "{{ test_vm_name }}"
+    path: "{{ test_vhd_path }}"
+    state: absent
+  register: disk_detach
+
+- name: Assert Detach
+  assert:
+    that:
+      - disk_detach.changed == true
+      - disk_detach.state == 'absent'
+
+- name: Test - Idempotency (Detach)
+  microsoft.hyperv.hv_hard_disk:
+    vm_name: "{{ test_vm_name }}"
+    path: "{{ test_vhd_path }}"
+    state: absent
+  register: disk_detach_idem
+
+- name: Assert Idempotency (Detach)
+  assert:
+    that:
+      - disk_detach_idem.changed == false

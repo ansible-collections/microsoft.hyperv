@@ -1,0 +1,34 @@
+---
+- name: Define test VM and disk names
+  set_fact:
+    test_vm_name: "AnsibleTestDisk_{{ 99999 | random }}"
+    test_vhd_path: "C:\\AnsibleTestDisk_{{ 99999 | random }}.vhdx"
+
+- block:
+    - name: Setup - Create a temporary dummy VM for testing
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_name }}"
+        state: present
+        generation: 2
+        memory_startup_bytes: "256MB"
+
+    - name: Setup - Create a temporary VHDX for testing
+      ansible.windows.win_powershell:
+        script: |
+          New-VHD -Path "{{ test_vhd_path }}" -SizeBytes 1GB
+
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove temporary dummy VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_name }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Teardown - Remove temporary VHDX
+      ansible.windows.win_file:
+        path: "{{ test_vhd_path }}"
+        state: absent
+      ignore_errors: true
