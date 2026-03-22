@@ -1,0 +1,114 @@
+---
+- name: Test - Configure Static Memory (Check Mode)
+  microsoft.hyperv.hv_memory:
+    name: "{{ test_vm_name }}"
+    dynamic_memory_enabled: false
+    startup_bytes: "512MB"
+  check_mode: true
+  register: mem_static_check
+
+- name: Assert Static Memory Check Mode
+  assert:
+    that:
+      - mem_static_check.changed == true
+      - mem_static_check.dynamic_memory_enabled == false
+      - mem_static_check.startup_bytes == 536870912
+
+- name: Test - Configure Static Memory
+  microsoft.hyperv.hv_memory:
+    name: "{{ test_vm_name }}"
+    dynamic_memory_enabled: false
+    startup_bytes: "512MB"
+  register: mem_static
+
+- name: Assert Static Memory
+  assert:
+    that:
+      - mem_static.changed == true
+      - mem_static.dynamic_memory_enabled == false
+      - mem_static.startup_bytes == 536870912
+
+- name: Test - Configure Dynamic Memory (Check Mode)
+  microsoft.hyperv.hv_memory:
+    name: "{{ test_vm_name }}"
+    dynamic_memory_enabled: true
+    startup_bytes: "1024MB"
+    minimum_bytes: "512MB"
+    maximum_bytes: "2GB"
+    buffer: 20
+    priority: 80
+  check_mode: true
+  register: mem_dyn_check
+
+- name: Assert Dynamic Memory Check Mode
+  assert:
+    that:
+      - mem_dyn_check.changed == true
+      - mem_dyn_check.dynamic_memory_enabled == true
+      - mem_dyn_check.startup_bytes == 1073741824
+      - mem_dyn_check.minimum_bytes == 536870912
+      - mem_dyn_check.maximum_bytes == 2147483648
+      - mem_dyn_check.buffer == 20
+      - mem_dyn_check.priority == 80
+
+- name: Test - Configure Dynamic Memory
+  microsoft.hyperv.hv_memory:
+    name: "{{ test_vm_name }}"
+    dynamic_memory_enabled: true
+    startup_bytes: "1024MB"
+    minimum_bytes: "512MB"
+    maximum_bytes: "2GB"
+    buffer: 20
+    priority: 80
+  register: mem_dyn
+
+- name: Assert Dynamic Memory
+  assert:
+    that:
+      - mem_dyn.changed == true
+      - mem_dyn.dynamic_memory_enabled == true
+      - mem_dyn.startup_bytes == 1073741824
+      - mem_dyn.minimum_bytes == 536870912
+      - mem_dyn.maximum_bytes == 2147483648
+      - mem_dyn.buffer == 20
+      - mem_dyn.priority == 80
+
+- name: Test - Idempotency
+  microsoft.hyperv.hv_memory:
+    name: "{{ test_vm_name }}"
+    dynamic_memory_enabled: true
+    startup_bytes: "1024MB"
+    minimum_bytes: "512MB"
+    maximum_bytes: "2GB"
+    buffer: 20
+    priority: 80
+  register: mem_idem
+
+- name: Assert Idempotency
+  assert:
+    that:
+      - mem_idem.changed == false
+
+- name: Test - Start VM
+  microsoft.hyperv.hv_vm_state:
+    name: "{{ test_vm_name }}"
+    state: running
+
+- name: Test - Attempt Startup Bytes change on running VM
+  microsoft.hyperv.hv_memory:
+    name: "{{ test_vm_name }}"
+    startup_bytes: "512MB"
+  register: mem_running_err
+  ignore_errors: true
+
+- name: Assert Running Error Handling
+  assert:
+    that:
+      - mem_running_err.failed == true
+      - "'while the VM is not Off' in mem_running_err.msg"
+
+- name: Test - Stop VM
+  microsoft.hyperv.hv_vm_state:
+    name: "{{ test_vm_name }}"
+    state: stopped
+    force: true
