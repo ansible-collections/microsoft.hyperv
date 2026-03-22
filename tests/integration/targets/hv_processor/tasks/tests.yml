@@ -1,0 +1,79 @@
+---
+- name: Test - Configure CPU parameters (Check Mode)
+  microsoft.hyperv.hv_processor:
+    name: "{{ test_vm_name }}"
+    count: 2
+    compatibility_for_migration_enabled: true
+    expose_virtualization_extensions: true
+    maximum: 80
+    reserve: 10
+  check_mode: true
+  register: cpu_check
+
+- name: Assert Check Mode CPU changes
+  assert:
+    that:
+      - cpu_check.changed == true
+      - cpu_check.count == 2
+      - cpu_check.compatibility_for_migration_enabled == true
+      - cpu_check.expose_virtualization_extensions == true
+      - cpu_check.maximum == 80
+      - cpu_check.reserve == 10
+
+- name: Test - Configure CPU parameters
+  microsoft.hyperv.hv_processor:
+    name: "{{ test_vm_name }}"
+    count: 2
+    compatibility_for_migration_enabled: true
+    expose_virtualization_extensions: true
+    maximum: 80
+    reserve: 10
+  register: cpu_change
+
+- name: Assert CPU changes
+  assert:
+    that:
+      - cpu_change.changed == true
+      - cpu_change.count == 2
+      - cpu_change.compatibility_for_migration_enabled == true
+      - cpu_change.expose_virtualization_extensions == true
+      - cpu_change.maximum == 80
+      - cpu_change.reserve == 10
+
+- name: Test - Idempotency
+  microsoft.hyperv.hv_processor:
+    name: "{{ test_vm_name }}"
+    count: 2
+    compatibility_for_migration_enabled: true
+    expose_virtualization_extensions: true
+    maximum: 80
+    reserve: 10
+  register: cpu_idem
+
+- name: Assert Idempotency
+  assert:
+    that:
+      - cpu_idem.changed == false
+
+- name: Test - Start VM
+  microsoft.hyperv.hv_vm_state:
+    name: "{{ test_vm_name }}"
+    state: running
+
+- name: Test - Attempt CPU Count change on running VM
+  microsoft.hyperv.hv_processor:
+    name: "{{ test_vm_name }}"
+    count: 4
+  register: cpu_running_err
+  ignore_errors: true
+
+- name: Assert Running Error Handling
+  assert:
+    that:
+      - cpu_running_err.failed == true
+      - "'while the VM is not Off' in cpu_running_err.msg"
+
+- name: Test - Stop VM
+  microsoft.hyperv.hv_vm_state:
+    name: "{{ test_vm_name }}"
+    state: stopped
