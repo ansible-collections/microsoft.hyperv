@@ -1,0 +1,149 @@
+---
+- name: Test - Create VHDX (Check Mode)
+  microsoft.hyperv.hv_vhd:
+    path: "{{ test_vhd_path }}"
+    state: present
+    size_bytes: "1GB"
+    vhd_type: Dynamic
+  check_mode: true
+  register: vhd_create_check
+
+- name: Assert Create Check Mode
+  assert:
+    that:
+      - vhd_create_check.changed == true
+      - vhd_create_check.state == 'present'
+      - vhd_create_check.size_bytes == 1073741824
+
+- name: Test - Create VHDX
+  microsoft.hyperv.hv_vhd:
+    path: "{{ test_vhd_path }}"
+    state: present
+    size_bytes: "1GB"
+    vhd_type: Dynamic
+  register: vhd_create
+
+- name: Assert Create
+  assert:
+    that:
+      - vhd_create.changed == true
+      - vhd_create.state == 'present'
+      - vhd_create.size_bytes == 1073741824
+
+- name: Test - Idempotency (Create)
+  microsoft.hyperv.hv_vhd:
+    path: "{{ test_vhd_path }}"
+    state: present
+    size_bytes: "1GB"
+  register: vhd_create_idem
+
+- name: Assert Idempotency (Create)
+  assert:
+    that:
+      - vhd_create_idem.changed == false
+
+- name: Test - Resize VHDX (Check Mode)
+  microsoft.hyperv.hv_vhd:
+    path: "{{ test_vhd_path }}"
+    state: present
+    size_bytes: "2GB"
+  check_mode: true
+  register: vhd_resize_check
+
+- name: Assert Resize Check Mode
+  assert:
+    that:
+      - vhd_resize_check.changed == true
+      - vhd_resize_check.size_bytes == 2147483648
+
+- name: Test - Resize VHDX
+  microsoft.hyperv.hv_vhd:
+    path: "{{ test_vhd_path }}"
+    state: present
+    size_bytes: "2GB"
+  register: vhd_resize
+
+- name: Assert Resize
+  assert:
+    that:
+      - vhd_resize.changed == true
+      - vhd_resize.size_bytes == 2147483648
+
+- name: Test - Mount VHDX (Check Mode)
+  microsoft.hyperv.hv_vhd:
+    path: "{{ test_vhd_path }}"
+    state: mounted
+  check_mode: true
+  register: vhd_mount_check
+
+- name: Assert Mount Check Mode
+  assert:
+    that:
+      - vhd_mount_check.changed == true
+      - vhd_mount_check.state == 'mounted'
+      - vhd_mount_check.attached == true
+
+- name: Test - Mount VHDX
+  microsoft.hyperv.hv_vhd:
+    path: "{{ test_vhd_path }}"
+    state: mounted
+  register: vhd_mount
+
+- name: Assert Mount
+  assert:
+    that:
+      - vhd_mount.changed == true
+      - vhd_mount.state == 'mounted'
+      - vhd_mount.attached == true
+
+- name: Test - Dismount VHDX (Check Mode)
+  microsoft.hyperv.hv_vhd:
+    path: "{{ test_vhd_path }}"
+    state: dismounted
+  check_mode: true
+  register: vhd_dismount_check
+
+- name: Assert Dismount Check Mode
+  assert:
+    that:
+      - vhd_dismount_check.changed == true
+      - vhd_dismount_check.state == 'dismounted'
+      - vhd_dismount_check.attached == false
+
+- name: Test - Dismount VHDX
+  microsoft.hyperv.hv_vhd:
+    path: "{{ test_vhd_path }}"
+    state: dismounted
+  register: vhd_dismount
+
+- name: Assert Dismount
+  assert:
+    that:
+      - vhd_dismount.changed == true
+      - vhd_dismount.state == 'dismounted'
+      - vhd_dismount.attached == false
+
+- name: Test - Delete VHDX (Check Mode)
+  microsoft.hyperv.hv_vhd:
+    path: "{{ test_vhd_path }}"
+    state: absent
+  check_mode: true
+  register: vhd_delete_check
+
+- name: Assert Delete Check Mode
+  assert:
+    that:
+      - vhd_delete_check.changed == true
+      - vhd_delete_check.state == 'absent'
+
+- name: Test - Delete VHDX
+  microsoft.hyperv.hv_vhd:
+    path: "{{ test_vhd_path }}"
+    state: absent
+  register: vhd_delete
+
+- name: Assert Delete
+  assert:
+    that:
+      - vhd_delete.changed == true
+      - vhd_delete.state == 'absent'

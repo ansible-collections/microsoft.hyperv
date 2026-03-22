@@ -12,10 +12,39 @@
         generation: 2
         memory_startup_bytes: "256MB"
 
+    - name: Setup - Create a temporary VHDX for testing (Check Mode)
+      microsoft.hyperv.hv_vhd:
+        path: "{{ test_vhd_path }}"
+        state: present
+        size_bytes: "1GB"
+        vhd_type: Dynamic
+      check_mode: true
+      register: vhd_setup_check
+
+    - name: Assert VHDX setup check mode
+      assert:
+        that:
+          - vhd_setup_check.changed == true
+
     - name: Setup - Create a temporary VHDX for testing
-      ansible.windows.win_powershell:
-        script: |
-          New-VHD -Path "{{ test_vhd_path }}" -SizeBytes 1GB
+      microsoft.hyperv.hv_vhd:
+        path: "{{ test_vhd_path }}"
+        state: present
+        size_bytes: "1GB"
+        vhd_type: Dynamic
+
+    - name: Setup - Idempotency check for VHDX creation
+      microsoft.hyperv.hv_vhd:
+        path: "{{ test_vhd_path }}"
+        state: present
+        size_bytes: "1GB"
+        vhd_type: Dynamic
+      register: vhd_setup_idem
+
+    - name: Assert VHDX setup idempotency
+      assert:
+        that:
+          - vhd_setup_idem.changed == false
 
     - name: Run tests
       ansible.builtin.include_tasks: tests.yml
@@ -28,7 +57,7 @@
       ignore_errors: true
 
     - name: Teardown - Remove temporary VHDX
-      ansible.windows.win_file:
+      microsoft.hyperv.hv_vhd:
         path: "{{ test_vhd_path }}"
         state: absent
       ignore_errors: true

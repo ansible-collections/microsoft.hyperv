@@ -39,7 +39,7 @@ try {
     # Normalize path for comparison (Hyper-V usually returns absolute paths)
     $fullPath = $null
     if ($path) {
-        $fullPath = (Get-Item -Path $path -ErrorAction SilentlyContinue).FullName
+        $fullPath = (Get-Item -LiteralPath $path -ErrorAction SilentlyContinue).FullName
         if (-not $fullPath) {
             # VHD might not exist yet if being provisioned in the same playbook, but this module expects existing VHD.
             # However, for detachment we might not care if file is deleted already.
@@ -84,7 +84,8 @@ try {
             }
 
             Remove-VMHardDiskDrive -VMHardDiskDrive $existingDrive | Out-Null
-        } else {
+        }
+        else {
             $module.Result.changed = $true
             if ($module.CheckMode) {
                 if ($null -ne $controller_type) { $module.Result.controller_type = $controller_type }

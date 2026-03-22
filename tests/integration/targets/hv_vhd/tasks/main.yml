@@ -1,0 +1,13 @@
+---
+- name: Define test VHD path
+  set_fact:
+    test_vhd_path: "C:\\AnsibleTestVHD_{{ 99999 | random }}.vhdx"
+
+- name: Run tests
+  ansible.builtin.include_tasks: tests.yml
+
+- name: Teardown - Remove temporary VHDX
+  microsoft.hyperv.hv_vhd:
+    path: "{{ test_vhd_path }}"
+    state: absent
+  ignore_errors: true
