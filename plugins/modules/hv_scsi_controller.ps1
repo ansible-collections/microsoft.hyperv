@@ -36,8 +36,6 @@ try {
     $currentControllers = Get-VMScsiController -VMName $vm_name -ErrorAction SilentlyContinue
     $currentCount = if ($currentControllers) { @($currentControllers).Count } else { 0 }
 
-    $changed = $false
-
     if ($currentCount -eq $count) {
         # Nothing to do, just map existing controllers to result
         if ($currentControllers) {
@@ -51,7 +49,6 @@ try {
         $module.ExitJson()
     }
 
-    $changed = $true
     $module.Result.changed = $true
 
     if ($module.CheckMode) {

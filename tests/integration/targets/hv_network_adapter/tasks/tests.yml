@@ -1,0 +1,129 @@
+---
+- name: Test - Add network adapter (Check Mode)
+  microsoft.hyperv.hv_network_adapter:
+    vm_name: "{{ test_vm_name }}"
+    name: "Production"
+    switch_name: "{{ test_switch_name }}"
+    state: present
+  check_mode: true
+  register: net_add_check
+
+- name: Assert Add Check Mode
+  assert:
+    that:
+      - net_add_check.changed == true
+      - net_add_check.name == "Production"
+
+- name: Test - Add network adapter
+  microsoft.hyperv.hv_network_adapter:
+    vm_name: "{{ test_vm_name }}"
+    name: "Production"
+    switch_name: "{{ test_switch_name }}"
+    state: present
+  register: net_add
+
+- name: Assert Add
+  assert:
+    that:
+      - net_add.changed == true
+      - net_add.name == "Production"
+      - net_add.switch_name == test_switch_name
+
+- name: Test - Idempotency (Add)
+  microsoft.hyperv.hv_network_adapter:
+    vm_name: "{{ test_vm_name }}"
+    name: "Production"
+    switch_name: "{{ test_switch_name }}"
+    state: present
+  register: net_add_idem
+
+- name: Assert Idempotency (Add)
+  assert:
+    that:
+      - net_add_idem.changed == false
+
+- name: Test - Configure VLAN and MAC (Check Mode)
+  microsoft.hyperv.hv_network_adapter:
+    vm_name: "{{ test_vm_name }}"
+    name: "Production"
+    vlan_mode: Access
+    vlan_id: 100
+    mac_address: "00155D010203"
+    mac_address_spoofing: true
+  check_mode: true
+  register: net_cfg_check
+
+- name: Assert Config Check Mode
+  assert:
+    that:
+      - net_cfg_check.changed == true
+
+- name: Test - Configure VLAN, MAC, and QoS
+  microsoft.hyperv.hv_network_adapter:
+    vm_name: "{{ test_vm_name }}"
+    name: "Production"
+    vlan_mode: Access
+    vlan_id: 100
+    mac_address: "00155D010203"
+    mac_address_spoofing: true
+    maximum_bandwidth: "1Gbps"
+  register: net_cfg
+
+- name: Assert Config
+  assert:
+    that:
+      - net_cfg.changed == true
+      - net_cfg.mac_address == "00155D010203"
+
+- name: Test - Idempotency (Config)
+  microsoft.hyperv.hv_network_adapter:
+    vm_name: "{{ test_vm_name }}"
+    name: "Production"
+    vlan_mode: Access
+    vlan_id: 100
+    mac_address: "00155D010203"
+    mac_address_spoofing: true
+    maximum_bandwidth: "1Gbps"
+  register: net_cfg_idem
+
+- name: Assert Idempotency (Config)
+  assert:
+    that:
+      - net_cfg_idem.changed == false
+
+- name: Test - Remove network adapter (Check Mode)
+  microsoft.hyperv.hv_network_adapter:
+    vm_name: "{{ test_vm_name }}"
+    name: "Production"
+    state: absent
+  check_mode: true
+  register: net_rem_check
+
+- name: Assert Remove Check Mode
+  assert:
+    that:
+      - net_rem_check.changed == true
+
+- name: Test - Remove network adapter
+  microsoft.hyperv.hv_network_adapter:
+    vm_name: "{{ test_vm_name }}"
+    name: "Production"
+    state: absent
+  register: net_rem
+
+- name: Assert Remove
+  assert:
+    that:
+      - net_rem.changed == true
+
+- name: Test - Idempotency (Remove)
+  microsoft.hyperv.hv_network_adapter:
+    vm_name: "{{ test_vm_name }}"
+    name: "Production"
+    state: absent
+  register: net_rem_idem
+
+- name: Assert Idempotency (Remove)
+  assert:
+    that:
+      - net_rem_idem.changed == false
