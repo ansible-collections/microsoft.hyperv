@@ -161,7 +161,9 @@ try {
             elseif ($changed) {
                 Set-VMDvdDrive -VMDvdDrive $existingDrive -Path $fullPath | Out-Null
                 # Refresh existingDrive object
-                $existingDrive = Get-VMDvdDrive -VMName $vm_name | Where-Object { $_.ControllerNumber -eq $existingDrive.ControllerNumber -and $_.ControllerLocation -eq $existingDrive.ControllerLocation }
+                $existingDrive = Get-VMDvdDrive -VMName $vm_name | Where-Object {
+                    $_.ControllerNumber -eq $existingDrive.ControllerNumber -and $_.ControllerLocation -eq $existingDrive.ControllerLocation
+                }
             }
 
             $module.Result.path = $existingDrive.Path

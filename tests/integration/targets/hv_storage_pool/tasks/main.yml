@@ -1,0 +1,35 @@
+---
+- name: Define test pool name and paths
+  set_fact:
+    test_pool_name: "AnsibleTestPool_{{ 99999 | random }}"
+    test_path_1: "C:\\AnsibleTestPool_Path1"
+    test_path_2: "C:\\AnsibleTestPool_Path2"
+
+- block:
+    - name: Setup - Create temporary test directories
+      ansible.windows.win_file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - "{{ test_path_1 }}"
+        - "{{ test_path_2 }}"
+
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove test pool
+      microsoft.hyperv.hv_storage_pool:
+        name: "{{ test_pool_name }}"
+        type: ISO
+        state: absent
+      ignore_errors: true
+
+    - name: Teardown - Remove temporary test directories
+      ansible.windows.win_file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ test_path_1 }}"
+        - "{{ test_path_2 }}"
+      ignore_errors: true
