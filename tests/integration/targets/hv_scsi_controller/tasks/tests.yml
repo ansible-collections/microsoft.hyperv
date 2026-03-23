@@ -1,0 +1,79 @@
+---
+- name: Test - Add SCSI Controllers (Check Mode)
+  microsoft.hyperv.hv_scsi_controller:
+    vm_name: "{{ test_vm_name }}"
+    count: 2
+  check_mode: true
+  register: scsi_add_check
+
+- name: Assert Add Check Mode
+  assert:
+    that:
+      - scsi_add_check.changed == true
+      - scsi_add_check.count == 2
+
+- name: Test - Add SCSI Controllers
+  microsoft.hyperv.hv_scsi_controller:
+    vm_name: "{{ test_vm_name }}"
+    count: 2
+  register: scsi_add
+
+- name: Assert Add
+  assert:
+    that:
+      - scsi_add.changed == true
+      - scsi_add.count == 2
+      - scsi_add.controllers | length == 2
+      - scsi_add.controllers[0].controller_number == 0
+      - scsi_add.controllers[1].controller_number == 1
+
+- name: Test - Idempotency
+  microsoft.hyperv.hv_scsi_controller:
+    vm_name: "{{ test_vm_name }}"
+    count: 2
+  register: scsi_idem
+
+- name: Assert Idempotency
+  assert:
+    that:
+      - scsi_idem.changed == false
+
+- name: Test - Remove SCSI Controller (Check Mode)
+  microsoft.hyperv.hv_scsi_controller:
+    vm_name: "{{ test_vm_name }}"
+    count: 1
+  check_mode: true
+  register: scsi_rem_check
+
+- name: Assert Remove Check Mode
+  assert:
+    that:
+      - scsi_rem_check.changed == true
+      - scsi_rem_check.count == 1
+
+- name: Test - Remove SCSI Controller
+  microsoft.hyperv.hv_scsi_controller:
+    vm_name: "{{ test_vm_name }}"
+    count: 1
+  register: scsi_rem
+
+- name: Assert Remove
+  assert:
+    that:
+      - scsi_rem.changed == true
+      - scsi_rem.count == 1
+      - scsi_rem.controllers | length == 1
+      - scsi_rem.controllers[0].controller_number == 0
+
+- name: Test - Remove All SCSI Controllers
+  microsoft.hyperv.hv_scsi_controller:
+    vm_name: "{{ test_vm_name }}"
+    count: 0
+  register: scsi_rem_all
+
+- name: Assert Remove All
+  assert:
+    that:
+      - scsi_rem_all.changed == true
+      - scsi_rem_all.count == 0
+      - scsi_rem_all.controllers | length == 0
