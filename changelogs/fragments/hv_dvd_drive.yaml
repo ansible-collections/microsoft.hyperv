@@ -1,0 +1,2 @@
+minor_changes:
+  - hv_dvd_drive - Manage virtual DVD drives and ISO mounting for Hyper-V Virtual Machines.
