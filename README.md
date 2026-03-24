@@ -31,8 +31,6 @@ For more information about communication, see the [Ansible communication guide](
 
 ## Contributing to this collection
 
-<!--Describe how the community can contribute to your collection. At a minimum, fill up and include the CONTRIBUTING.md file containing how and where users can create issues to report problems or request features for this collection. List contribution requirements, including preferred workflows and necessary testing, so you can benefit from community PRs. If you are following general Ansible contributor guidelines, you can link to - [Ansible Community Guide](https://docs.ansible.com/projects/ansible/devel/community/index.html). List the current maintainers (contributors with write or higher access to the repository). The following can be included:-->
-
 The content of this collection is made by people like you, a community of individuals collaborating on making the world better through developing automation software.
 
 We are actively accepting new contributors and all types of contributions are very welcome.
@@ -62,8 +60,6 @@ They also should be subscribed to Ansible's [The Bullhorn newsletter](https://do
 
 ## Governance
 
-<!--Describe how the collection is governed. Here can be the following text:-->
-
 The process of decision making in this collection is based on discussing and finding consensus among participants.
 
 Every voice is important. If you have something on your mind, create an issue or dedicated discussion and let's discuss it!
@@ -82,26 +78,14 @@ This collection is tested with the most current Ansible releases.
 ### Supported connections
 This collection uses the `winrm` or `psrp` connection plugins to communicate with Windows hosts running Hyper-V.
 
-## Included content
+## Available Modules
 
-This collection includes **35 modules** (consolidated from 47 original tasks through strategic optimization) for comprehensive Hyper-V management.
-
-**Consolidation Highlights**:
-- Power management and restart operations combined into `hv_vm_state`
-- Network adapter properties (VLAN, MAC, QoS) unified in `hv_network_adapter`
-- Boot configuration consolidated for Gen1 and Gen2 VMs in `hv_vm_boot`
-- 10 total consolidations reducing module count by 26% while maintaining full functionality
-
-See [docs/plans/FINAL_MODULE_LIST.md](docs/plans/FINAL_MODULE_LIST.md) for complete consolidation analysis.
+The following modules are currently available and fully supported in the collection:
 
 ### Virtual Machine Management
 - `hv_vm` - VM provisioning and deprovisioning
-- `hv_vm_state` ✨ - VM power management including start, stop, pause, save, **and restart** (consolidates restart module)
+- `hv_vm_state` - VM power management (start, stop, pause, save, restart)
 - `hv_checkpoint` - Snapshot management
-- `hv_vm_transfer` ✨ - **Export and import** VMs (consolidates export/import modules)
-- `hv_vm_move` - Live migration
-- `hv_vm_tag` - VM tagging
-- `hv_vm_group` - VM grouping
 
 ### VM Hardware Configuration
 - `hv_processor` - vCPU management
@@ -109,45 +93,59 @@ See [docs/plans/FINAL_MODULE_LIST.md](docs/plans/FINAL_MODULE_LIST.md) for compl
 - `hv_scsi_controller` - SCSI controller management
 - `hv_hard_disk` - Hard disk management
 - `hv_dvd_drive` - DVD drive management
-- `hv_network_adapter` ✨ - Network adapter configuration **including VLAN, MAC address, and QoS/bandwidth** (consolidates 4 modules)
-- `hv_com_port` - COM port configuration
-- `hv_vm_boot` ✨ - Boot configuration for **both Gen1 (BIOS) and Gen2 (firmware)** VMs (consolidates 2 modules)
-- `hv_integration_service` - Integration services management
-
-### Virtual Networking
-- `hv_vswitch` ✨ - Virtual switch management **including extensions** (consolidates 2 modules)
-- `hv_network_acl` ✨ - VM access control lists **including standard and extended ACLs** (consolidates 2 modules)
-- `hv_isolation` - Network isolation settings (VXLAN/NVGRE for SDN)
+- `hv_network_adapter` - Network adapter configuration (VLAN, MAC, QoS)
+- `hv_vm_boot` - Boot configuration (BIOS/Firmware)
 
 ### Storage Management
-- `hv_vhd` ✨ - VHD/VHDX file operations **including mount/unmount** (consolidates 2 modules)
+- `hv_vhd` - VHD/VHDX file operations
 - `hv_storage_pool` - Storage pool management
-- `hv_san_adapter` - Fibre Channel SAN adapter management
-
-### Replication and Migration
-- `hv_replication` - Hyper-V Replica configuration (VM-level)
-- `hv_replication_server` - Replication server settings (Host-level)
-- `hv_migration_network` - Migration network configuration
 
 ### Advanced Features
-- `hv_hardware_passthrough` ✨ - **GPU partitioning and Discrete Device Assignment** (consolidates 2 modules)
-- `hv_shielded_vm` - Shielded VM configuration
-- `hv_nested_virt` - Nested virtualization
-- `hv_host` ✨ - Hyper-V host configuration **including console settings** (consolidates 2 modules)
-
-### Guest Operations
-- `hv_guest` ✨ - **Execute commands and copy files** via PowerShell Direct (consolidates 2 modules)
+- `hv_host` - Hyper-V host configuration
 
 ### Information Gathering
 - `hv_vm_info` - Gather VM information
 - `hv_host_info` - Gather Hyper-V host information
 
-### Clustering
-- `hv_cluster_node_maintenance` - Cluster node maintenance mode
-- `hv_cluster_group_set` - Cluster group set management
-- `hv_resource_pool` - Resource pool management
+## Planned Modules
 
-**Note**: ✨ indicates consolidated modules. See [docs/plans/MODULES.md](docs/plans/MODULES.md) for deprecated module names and migration guide.
+The following modules are on the roadmap and will be released in future updates:
+
+### Virtual Machine Management
+- `hv_vm_transfer` - Export and import VMs
+- `hv_vm_move` - Live migration
+- `hv_vm_tag` - VM tagging
+- `hv_vm_group` - VM grouping
+
+### VM Hardware Configuration
+- `hv_com_port` - COM port configuration
+- `hv_integration_service` - Integration services management
+
+### Virtual Networking
+- `hv_vswitch` - Virtual switch management
+- `hv_network_acl` - VM access control lists
+- `hv_isolation` - Network isolation settings (SDN)
+
+### Storage Management
+- `hv_san_adapter` - Fibre Channel SAN adapter management
+
+### Replication and Migration
+- `hv_replication` - VM replication settings
+- `hv_replication_server` - Host replication settings
+- `hv_migration_network` - Migration network settings
+
+### Advanced Features
+- `hv_hardware_passthrough` - GPU-P and Discrete Device Assignment
+- `hv_shielded_vm` - Shielded VM configuration
+- `hv_nested_virt` - Nested virtualization
+
+### Guest Operations
+- `hv_guest` - File copy and command execution via PowerShell Direct
+
+### Clustering
+- `hv_cluster_node_maintenance` - Cluster maintenance mode
+- `hv_cluster_group_set` - Cluster group management
+- `hv_resource_pool` - Resource pool management
 
 ## Using this collection
 
@@ -267,8 +265,6 @@ The collection follows semantic versioning. Breaking changes will only be introd
 - [Important announcements for maintainers](https://github.com/ansible-collections/news-for-maintainers)
 
 ## Licensing
-
-<!-- Include the appropriate license information here and a pointer to the full licensing details. If the collection contains modules migrated from the ansible/ansible repo, you must use the same license that existed in the ansible/ansible repo. See the GNU license example below. -->
 
 GNU General Public License v3.0 or later.
 
