@@ -1,0 +1,2 @@
+minor_changes:
+  - hv_network_adapter - Manage Hyper-V Virtual Machine Network Adapters.

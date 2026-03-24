@@ -1,0 +1,36 @@
+---
+- name: Define test VM and switch names
+  set_fact:
+    test_vm_name: "AnsibleTestNet_{{ 99999 | random }}"
+    test_switch_name: "AnsibleTestSwitch_{{ 99999 | random }}"
+
+- block:
+    - name: Setup - Create a temporary dummy VM for testing
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_name }}"
+        state: present
+        generation: 2
+        memory_startup_bytes: "256MB"
+
+    - name: Setup - Create a temporary vSwitch for testing
+      ansible.windows.win_powershell:
+        script: |
+          New-VMSwitch -Name "{{ test_switch_name }}" -SwitchType Private
+
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove temporary dummy VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_name }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Teardown - Remove temporary vSwitch
+      ansible.windows.win_powershell:
+        script: |
+          if (Get-VMSwitch -Name "{{ test_switch_name }}" -ErrorAction SilentlyContinue) {
+              Remove-VMSwitch -Name "{{ test_switch_name }}" -Force
+          }
+      ignore_errors: true
