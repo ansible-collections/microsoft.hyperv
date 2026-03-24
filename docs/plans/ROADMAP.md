@@ -40,18 +40,18 @@ After analyzing all 47 original tasks, we identified opportunities to combine re
 **Timeline**: Weeks 1-4
 
 #### Module Utils (Week 1-2)
-- [ ] **hyperv_connection.py** - WinRM/PSRP session management
-- [ ] **hyperv_core.py** - VM state checking, idempotency, error parsing
-- [ ] **hyperv_validation.py** - Gen1/Gen2 validation, parameter checks
-- [ ] **hyperv_powershell.py** - PowerShell script generation and execution
+- [x] ~~**hyperv_connection.py**~~ (Obsolete) - WinRM/PSRP session management
+- [x] ~~**hyperv_core.py**~~ (Obsolete) - VM state checking, idempotency, error parsing
+- [x] ~~**hyperv_validation.py**~~ (Obsolete) - Gen1/Gen2 validation, parameter checks
+- [x] ~~**hyperv_powershell.py**~~ (Obsolete) - PowerShell script generation and execution
 
 #### Core VM Lifecycle (Week 3-4)
-- [ ] **hv_vm** (ACA-4782) - VM provisioning and deprovisioning
-- [ ] **hv_vm_state** (ACA-4783, ACA-4784) - ✨ **CONSOLIDATED** - Power management including start, stop, pause, save, restart
-- [ ] **hv_checkpoint** (ACA-4785) - Snapshot management
-- [ ] **hv_vm_info** (ACA-4823) - Gather VM information
-- [ ] **hv_host_info** (ACA-4824) - Gather Hyper-V host information
-- [ ] **hv_host** (ACA-4818, ACA-4819) - ✨ **CONSOLIDATED** - Host configuration including console settings
+- [x] **hv_vm** (ACA-4782) - VM provisioning and deprovisioning
+- [x] **hv_vm_state** (ACA-4783, ACA-4784) - ✨ **CONSOLIDATED** - Power management including start, stop, pause, save, restart
+- [x] **hv_checkpoint** (ACA-4785) - Snapshot management
+- [x] **hv_vm_info** (ACA-4823) - Gather VM information
+- [x] **hv_host_info** (ACA-4824) - Gather Hyper-V host information
+- [x] **hv_host** (ACA-4818, ACA-4819) - ✨ **CONSOLIDATED** - Host configuration including console settings
 
 ---
 
@@ -60,25 +60,25 @@ After analyzing all 47 original tasks, we identified opportunities to combine re
 **Timeline**: Weeks 5-8
 
 #### Compute Resources (Week 5)
-- [ ] **hv_processor** (ACA-4789) - vCPU management
-- [ ] **hv_memory** (ACA-4790) - Dynamic RAM configuration
+- [x] **hv_processor** (ACA-4789) - vCPU management
+- [x] **hv_memory** (ACA-4790) - Dynamic RAM configuration
 
 #### Storage Hardware (Week 6)
 - [ ] **hyperv_storage.py** - Module util for storage operations
-- [ ] **hv_vhd** (ACA-4806, ACA-4807) - ✨ **CONSOLIDATED** - VHD/VHDX file operations including mount/unmount
-- [ ] **hv_hard_disk** (ACA-4792) - Hard disk attachment
-- [ ] **hv_scsi_controller** (ACA-4791) - SCSI controller management
-- [ ] **hv_dvd_drive** (ACA-4793) - DVD drive and ISO management
+- [x] **hv_vhd** (ACA-4806, ACA-4807) - ✨ **CONSOLIDATED** - VHD/VHDX file operations including mount/unmount
+- [x] **hv_hard_disk** (ACA-4792) - Hard disk attachment
+- [x] **hv_scsi_controller** (ACA-4791) - SCSI controller management
+- [x] **hv_dvd_drive** (ACA-4793) - DVD drive and ISO management
 
 #### Networking Hardware (Week 7-8)
 - [ ] **hyperv_network.py** - Module util for network operations
 - [ ] **hv_vswitch** (ACA-4798, ACA-4805) - ✨ **CONSOLIDATED** - Virtual switch management including extensions
-- [ ] **hv_network_adapter** (ACA-4794, ACA-4799, ACA-4800, ACA-4803) - ✨ **CONSOLIDATED** - Network adapter with VLAN, MAC, and QoS settings
+- [x] **hv_network_adapter** (ACA-4794, ACA-4799, ACA-4800, ACA-4803) - ✨ **CONSOLIDATED** - Network adapter with VLAN, MAC, and QoS settings
 - [ ] **hv_network_acl** (ACA-4801, ACA-4802) - ✨ **CONSOLIDATED** - Standard and extended ACL management
 - [ ] **hv_isolation** (ACA-4804) - Network isolation (VXLAN/NVGRE) for SDN
 
 #### Boot & Integration (Week 8)
-- [ ] **hv_vm_boot** (ACA-4796, ACA-4820) - ✨ **CONSOLIDATED** - Boot configuration for Gen1 (BIOS) and Gen2 (firmware)
+- [x] **hv_vm_boot** (ACA-4796, ACA-4820) - ✨ **CONSOLIDATED** - Boot configuration for Gen1 (BIOS) and Gen2 (firmware)
 - [ ] **hv_integration_service** (ACA-4797) - Integration services management
 - [ ] **hv_com_port** (ACA-4795) - COM port configuration
 
@@ -97,7 +97,7 @@ After analyzing all 47 original tasks, we identified opportunities to combine re
 - [ ] **hv_migration_network** (ACA-4812) - Migration network configuration
 
 #### Storage Advanced (Week 11-12)
-- [ ] **hv_storage_pool** (ACA-4808) - Storage pool management
+- [x] **hv_storage_pool** (ACA-4808) - Storage pool management
 - [ ] **hv_san_adapter** (ACA-4809) - Fibre Channel SAN adapter management
 
 ---
