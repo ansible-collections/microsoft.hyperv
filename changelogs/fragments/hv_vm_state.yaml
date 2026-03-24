@@ -1,3 +1,0 @@
----
-minor_changes:
-  - hv_vm_state - Manage the power state of virtual machines on a Hyper-V host.
