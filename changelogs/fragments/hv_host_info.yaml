@@ -1,2 +1,0 @@
-minor_changes:
-  - hv_host_info - Gather facts about the Hyper-V host.

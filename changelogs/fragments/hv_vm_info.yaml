@@ -1,3 +1,0 @@
----
-minor_changes:
-  - hv_vm_info - Gather information about Hyper-V Virtual Machines.

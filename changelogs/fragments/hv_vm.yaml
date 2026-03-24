@@ -1,3 +1,0 @@
----
-minor_changes:
-  - hv_vm - Manage the creation and removal of Virtual Machines on a Hyper-V host.

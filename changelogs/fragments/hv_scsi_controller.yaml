@@ -1,2 +1,0 @@
-minor_changes:
-  - hv_scsi_controller - Manage the number of synthetic SCSI controllers attached to a Hyper-V Virtual Machine.
