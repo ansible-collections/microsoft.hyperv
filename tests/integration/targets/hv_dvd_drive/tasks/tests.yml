@@ -1,0 +1,164 @@
+---
+- name: Test - Add blank DVD Drive (Check Mode)
+  microsoft.hyperv.hv_dvd_drive:
+    vm_name: "{{ test_vm_name }}"
+    state: present
+  check_mode: true
+  register: dvd_blank_check
+
+- name: Assert Blank Drive Check Mode
+  assert:
+    that:
+      - dvd_blank_check.changed == true
+      - dvd_blank_check.state == 'present'
+
+- name: Test - Add blank DVD Drive
+  microsoft.hyperv.hv_dvd_drive:
+    vm_name: "{{ test_vm_name }}"
+    state: present
+  register: dvd_blank
+
+- name: Assert Blank Drive
+  assert:
+    that:
+      - dvd_blank.changed == true
+      - dvd_blank.state == 'present'
+      - dvd_blank.path is none
+
+- name: Test - Idempotency Add blank DVD Drive
+  microsoft.hyperv.hv_dvd_drive:
+    vm_name: "{{ test_vm_name }}"
+    state: present
+  register: dvd_blank_idem
+
+- name: Assert Idempotency Blank Drive
+  assert:
+    that:
+      - dvd_blank_idem.changed == false
+
+- name: Test - Mount ISO to existing drive (Check Mode)
+  microsoft.hyperv.hv_dvd_drive:
+    vm_name: "{{ test_vm_name }}"
+    path: "{{ test_iso_path }}"
+    state: mounted
+  check_mode: true
+  register: dvd_mount_check
+
+- name: Assert Mount ISO Check Mode
+  assert:
+    that:
+      - dvd_mount_check.changed == true
+      - dvd_mount_check.state == 'mounted'
+      - dvd_mount_check.path == test_iso_path
+
+- name: Test - Mount ISO to existing drive
+  microsoft.hyperv.hv_dvd_drive:
+    vm_name: "{{ test_vm_name }}"
+    path: "{{ test_iso_path }}"
+    state: mounted
+  register: dvd_mount
+
+- name: Assert Mount ISO
+  assert:
+    that:
+      - dvd_mount.changed == true
+      - dvd_mount.state == 'mounted'
+      - dvd_mount.path == test_iso_path
+
+- name: Test - Idempotency Mount ISO
+  microsoft.hyperv.hv_dvd_drive:
+    vm_name: "{{ test_vm_name }}"
+    path: "{{ test_iso_path }}"
+    state: mounted
+  register: dvd_mount_idem
+
+- name: Assert Idempotency Mount ISO
+  assert:
+    that:
+      - dvd_mount_idem.changed == false
+
+- name: Test - Eject ISO (Check Mode)
+  microsoft.hyperv.hv_dvd_drive:
+    vm_name: "{{ test_vm_name }}"
+    controller_number: 0
+    controller_location: 1
+    state: ejected
+  check_mode: true
+  register: dvd_eject_check
+
+- name: Assert Eject ISO Check Mode
+  assert:
+    that:
+      - dvd_eject_check.changed == true
+      - dvd_eject_check.state == 'ejected'
+      - dvd_eject_check.path is none
+
+- name: Test - Eject ISO
+  microsoft.hyperv.hv_dvd_drive:
+    vm_name: "{{ test_vm_name }}"
+    controller_number: 0
+    controller_location: 1
+    state: ejected
+  register: dvd_eject
+
+- name: Assert Eject ISO
+  assert:
+    that:
+      - dvd_eject.changed == true
+      - dvd_eject.state == 'ejected'
+      - dvd_eject.path is none
+
+- name: Test - Idempotency Eject ISO
+  microsoft.hyperv.hv_dvd_drive:
+    vm_name: "{{ test_vm_name }}"
+    controller_number: 0
+    controller_location: 1
+    state: ejected
+  register: dvd_eject_idem
+
+- name: Assert Idempotency Eject ISO
+  assert:
+    that:
+      - dvd_eject_idem.changed == false
+
+- name: Test - Remove DVD Drive (Check Mode)
+  microsoft.hyperv.hv_dvd_drive:
+    vm_name: "{{ test_vm_name }}"
+    controller_number: 0
+    controller_location: 1
+    state: absent
+  check_mode: true
+  register: dvd_remove_check
+
+- name: Assert Remove DVD Drive Check Mode
+  assert:
+    that:
+      - dvd_remove_check.changed == true
+      - dvd_remove_check.state == 'absent'
+
+- name: Test - Remove DVD Drive
+  microsoft.hyperv.hv_dvd_drive:
+    vm_name: "{{ test_vm_name }}"
+    controller_number: 0
+    controller_location: 1
+    state: absent
+  register: dvd_remove
+
+- name: Assert Remove DVD Drive
+  assert:
+    that:
+      - dvd_remove.changed == true
+      - dvd_remove.state == 'absent'
+
+- name: Test - Idempotency Remove DVD Drive
+  microsoft.hyperv.hv_dvd_drive:
+    vm_name: "{{ test_vm_name }}"
+    controller_number: 0
+    controller_location: 1
+    state: absent
+  register: dvd_remove_idem
+
+- name: Assert Idempotency Remove DVD Drive
+  assert:
+    that:
+      - dvd_remove_idem.changed == false

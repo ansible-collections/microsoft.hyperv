@@ -1,0 +1,116 @@
+---
+- name: Test - Create ISO Resource Pool (Check Mode)
+  microsoft.hyperv.hv_storage_pool:
+    name: "{{ test_pool_name }}"
+    type: ISO
+    paths:
+      - "{{ test_path_1 }}"
+    state: present
+  check_mode: true
+  register: pool_create_check
+
+- name: Assert Create Check Mode
+  assert:
+    that:
+      - pool_create_check.changed == true
+      - pool_create_check.name == test_pool_name
+      - pool_create_check.type == 'ISO'
+
+- name: Test - Create ISO Resource Pool
+  microsoft.hyperv.hv_storage_pool:
+    name: "{{ test_pool_name }}"
+    type: ISO
+    paths:
+      - "{{ test_path_1 }}"
+    state: present
+  register: pool_create
+
+- name: Assert Create
+  assert:
+    that:
+      - pool_create.changed == true
+      - pool_create.paths[0] == test_path_1
+
+- name: Test - Idempotency (Create)
+  microsoft.hyperv.hv_storage_pool:
+    name: "{{ test_pool_name }}"
+    type: ISO
+    paths:
+      - "{{ test_path_1 }}"
+    state: present
+  register: pool_create_idem
+
+- name: Assert Idempotency (Create)
+  assert:
+    that:
+      - pool_create_idem.changed == false
+
+- name: Test - Update Pool Paths (Check Mode)
+  microsoft.hyperv.hv_storage_pool:
+    name: "{{ test_pool_name }}"
+    type: ISO
+    paths:
+      - "{{ test_path_1 }}"
+      - "{{ test_path_2 }}"
+    state: present
+  check_mode: true
+  register: pool_update_check
+
+- name: Assert Update Check Mode
+  assert:
+    that:
+      - pool_update_check.changed == true
+      - pool_update_check.paths | length == 2
+
+- name: Test - Update Pool Paths
+  microsoft.hyperv.hv_storage_pool:
+    name: "{{ test_pool_name }}"
+    type: ISO
+    paths:
+      - "{{ test_path_1 }}"
+      - "{{ test_path_2 }}"
+    state: present
+  register: pool_update
+
+- name: Assert Update
+  assert:
+    that:
+      - pool_update.changed == true
+      - pool_update.paths | length == 2
+
+- name: Test - Remove Pool (Check Mode)
+  microsoft.hyperv.hv_storage_pool:
+    name: "{{ test_pool_name }}"
+    type: ISO
+    state: absent
+  check_mode: true
+  register: pool_remove_check
+
+- name: Assert Remove Check Mode
+  assert:
+    that:
+      - pool_remove_check.changed == true
+
+- name: Test - Remove Pool
+  microsoft.hyperv.hv_storage_pool:
+    name: "{{ test_pool_name }}"
+    type: ISO
+    state: absent
+  register: pool_remove
+
+- name: Assert Remove
+  assert:
+    that:
+      - pool_remove.changed == true
+
+- name: Test - Idempotency (Remove)
+  microsoft.hyperv.hv_storage_pool:
+    name: "{{ test_pool_name }}"
+    type: ISO
+    state: absent
+  register: pool_remove_idem
+
+- name: Assert Idempotency (Remove)
+  assert:
+    that:
+      - pool_remove_idem.changed == false
