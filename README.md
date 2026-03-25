@@ -47,7 +47,7 @@ We also use the following guidelines:
 
 ## Collection maintenance
 
-The current maintainers are listed in the [MAINTAINERS](MAINTAINERS) file. If you have questions or need help, feel free to mention them in the proposals.
+The current maintainers are listed in the [MAINTAINERS](https://github.com/ansible-collections/microsoft.hyperv/blob/main/MAINTAINERS) file. If you have questions or need help, feel free to mention them in the proposals.
 
 To learn how to maintain/become a maintainer of this collection, refer to the [Maintainer guidelines](https://docs.ansible.com/projects/ansible/devel/community/maintainers.html).
 
@@ -109,7 +109,7 @@ The following modules are currently available and fully supported in the collect
 
 ## Planned Modules
 
-The following modules are on the roadmap and will be released in future updates:
+The following modules are planned and will be released in future updates:
 
 ### Virtual Machine Management
 - `hv_vm_transfer` - Export and import VMs
@@ -147,6 +147,13 @@ The following modules are on the roadmap and will be released in future updates:
 - `hv_cluster_group_set` - Cluster group management
 - `hv_resource_pool` - Resource pool management
 
+## Support
+As Red Hat Ansible Certified Content, this collection is entitled to support through the Ansible Automation Platform (AAP).
+
+*   **Certified Support:** If you have an active Red Hat subscription, you can open a support case via the [Red Hat Customer Portal](https://access.redhat.com/support/cases/#/case/combine) or by using the **Create issue** button on the top right corner of the collection page in Automation Hub.
+*   **Community Support:** If this collection was obtained via Ansible Galaxy or GitHub and a Red Hat support case cannot be opened, community assistance is available on the [Ansible Forum](https://forum.ansible.com/).
+*   **Supported Versions:** Support is provided for the current major version and the previous major version of this collection.
+
 ## Using this collection
 
 ### Installing the Collection from Ansible Galaxy
@@ -168,10 +175,10 @@ Note that if you install the collection from Ansible Galaxy, it will not be upgr
 ansible-galaxy collection install microsoft.hyperv --upgrade
 ```
 
-You can also install a specific version of the collection, for example, if you need to downgrade when something is broken in the latest version (please report an issue in this repository). Use the following syntax to install version `0.1.0`:
+You can also install a specific version of the collection, for example, if you need to downgrade when something is broken in the latest version (please report an issue in this repository). Use the following syntax to install version `1.0.0`:
 
 ```bash
-ansible-galaxy collection install microsoft.hyperv:==0.1.0
+ansible-galaxy collection install microsoft.hyperv:==1.0.0
 ```
 
 See [using Ansible collections](https://docs.ansible.com/projects/ansible/devel/user_guide/collections_using.html) for more details.
@@ -212,7 +219,7 @@ Here's a simple example of using this collection to create and start a Hyper-V V
 
 ## Release notes
 
-See the [changelog](https://github.com/ansible-collections/microsoft.hyperv/tree/main/CHANGELOG.md).
+See the [changelog](https://github.com/ansible-collections/microsoft.hyperv/blob/main/CHANGELOG.md).
 
 ## Roadmap
 
@@ -248,9 +255,7 @@ The collection follows semantic versioning. Breaking changes will only be introd
 ## More information
 
 ### Collection Documentation
-- [Module Reference](MODULES.md) - Complete list of all modules and their purposes
-- [Development Roadmap](ROADMAP.md) - Detailed development plan and timeline
-- [Changelog](CHANGELOG.md) - Release notes and version history
+- [Changelog](https://github.com/ansible-collections/microsoft.hyperv/blob/main/CHANGELOG.md) - Release notes and version history
 
 ### Microsoft Hyper-V Resources
 - [Microsoft Hyper-V Documentation](https://docs.microsoft.com/en-us/windows-server/virtualization/hyper-v/hyper-v-on-windows-server)
