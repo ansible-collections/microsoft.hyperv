@@ -221,37 +221,6 @@ Here's a simple example of using this collection to create and start a Hyper-V V
 
 See the [changelog](https://github.com/ansible-collections/microsoft.hyperv/blob/main/CHANGELOG.md).
 
-## Roadmap
-
-This collection is currently under active development. The roadmap includes:
-
-### Phase 1: Core VM Management (Epic: ACA-4728)
-- VM lifecycle operations (create, delete, start, stop, restart)
-- VM hardware configuration (CPU, memory, storage, network)
-- Checkpoint/snapshot management
-- VM import/export capabilities
-
-### Phase 2: Networking and Storage
-- Virtual switch and VLAN management
-- Advanced network features (ACLs, bandwidth management, isolation)
-- Storage pool and VHD management
-- SAN adapter integration
-
-### Phase 3: Advanced Features
-- Hyper-V Replica configuration
-- Live migration support
-- Shielded VM support
-- GPU partitioning and DDA
-- Nested virtualization
-
-### Phase 4: Clustering and Enterprise Features
-- Failover clustering integration
-- Resource pool management
-- Guest integration services
-- Enhanced monitoring and information gathering
-
-The collection follows semantic versioning. Breaking changes will only be introduced in major version releases.
-
 ## More information
 
 ### Collection Documentation
