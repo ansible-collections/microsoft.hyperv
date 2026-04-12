@@ -13,9 +13,10 @@
         memory_startup_bytes: "256MB"
 
     - name: Setup - Create a temporary vSwitch for testing
-      ansible.windows.win_powershell:
-        script: |
-          New-VMSwitch -Name "{{ test_switch_name }}" -SwitchType Private
+      microsoft.hyperv.hv_vswitch:
+        name: "{{ test_switch_name }}"
+        switch_type: private
+        state: present
 
     - name: Run tests
       ansible.builtin.include_tasks: tests.yml
@@ -28,9 +29,7 @@
       ignore_errors: true
 
     - name: Teardown - Remove temporary vSwitch
-      ansible.windows.win_powershell:
-        script: |
-          if (Get-VMSwitch -Name "{{ test_switch_name }}" -ErrorAction SilentlyContinue) {
-              Remove-VMSwitch -Name "{{ test_switch_name }}" -Force
-          }
+      microsoft.hyperv.hv_vswitch:
+        name: "{{ test_switch_name }}"
+        state: absent
       ignore_errors: true

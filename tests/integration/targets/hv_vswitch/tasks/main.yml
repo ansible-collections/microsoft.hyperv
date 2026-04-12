@@ -1,0 +1,20 @@
+---
+- name: Define test switch names
+  set_fact:
+    test_vswitch_private: "AnsibleTest_Private_{{ 99999 | random }}"
+    test_vswitch_internal: "AnsibleTest_Internal_{{ 99999 | random }}"
+
+- name: Run hv_vswitch integration tests
+  block:
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Ensure test switches are removed
+      microsoft.hyperv.hv_vswitch:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ test_vswitch_private }}"
+        - "{{ test_vswitch_internal }}"
+      ignore_errors: true
