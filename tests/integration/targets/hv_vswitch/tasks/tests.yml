@@ -1,0 +1,115 @@
+---
+# 1. Private Switch creation and idempotency
+- name: Create Private Virtual Switch
+  microsoft.hyperv.hv_vswitch:
+    name: "{{ test_vswitch_private }}"
+    switch_type: private
+    state: present
+    notes: "Ansible Integration Test Private Switch"
+  register: result_private_create
+
+- name: Assert Private Switch creation
+  assert:
+    that:
+      - result_private_create.changed == true
+      - result_private_create.switch_type == 'Private'
+
+- name: Create Private Virtual Switch again (idempotency)
+  microsoft.hyperv.hv_vswitch:
+    name: "{{ test_vswitch_private }}"
+    switch_type: private
+    state: present
+    notes: "Ansible Integration Test Private Switch"
+  register: result_private_idem
+
+- name: Assert idempotency
+  assert:
+    that:
+      - result_private_idem.changed == false
+
+# 2. Internal Switch creation
+- name: Create Internal Virtual Switch
+  microsoft.hyperv.hv_vswitch:
+    name: "{{ test_vswitch_internal }}"
+    switch_type: internal
+    state: present
+  register: result_internal_create
+
+- name: Assert Internal Switch creation
+  assert:
+    that:
+      - result_internal_create.changed == true
+      - result_internal_create.switch_type == 'Internal'
+      - result_internal_create.notes == ""
+      - result_internal_create.allow_management_os == true
+      - result_internal_create.minimum_bandwidth_mode == 'None'
+
+# 3. Extension management
+- name: Get a sample extension name
+  ansible.windows.win_powershell:
+    script: |
+      $ext = Get-VMSwitchExtension -VMSwitchName "{{ test_vswitch_private }}" | Select-Object -First 1
+      if ($ext) {
+          $ext | Select-Object -Property Name, Enabled | ConvertTo-Json
+      } else {
+          "{}"
+      }
+  register: sample_extension_raw
+
+- name: Set sample extension fact
+  set_fact:
+    sample_extension: "{{ sample_extension_raw.output[0] | from_json }}"
+
+- block:
+    - name: Toggle extension state (if one exists)
+      microsoft.hyperv.hv_vswitch:
+        name: "{{ test_vswitch_private }}"
+        extensions:
+          - name: "{{ sample_extension.Name }}"
+            state: "{{ 'disabled' if sample_extension.Enabled else 'enabled' }}"
+      register: result_ext_toggle
+
+    - name: Assert extension toggle changed
+      assert:
+        that:
+          - result_ext_toggle.changed == true
+
+    - name: Toggle extension state back (idempotency check)
+      microsoft.hyperv.hv_vswitch:
+        name: "{{ test_vswitch_private }}"
+        extensions:
+          - name: "{{ sample_extension.Name }}"
+            state: "{{ sample_extension.Enabled | ternary('enabled', 'disabled') }}"
+      register: result_ext_back
+
+    - name: Assert extension back changed
+      assert:
+        that:
+          - result_ext_back.changed == true
+  when: sample_extension.Name is defined
+
+# 4. Check Mode removal
+- name: Remove switch (check mode)
+  microsoft.hyperv.hv_vswitch:
+    name: "{{ test_vswitch_internal }}"
+    state: absent
+  check_mode: true
+  register: result_check_absent
+
+- name: Assert check mode absent
+  assert:
+    that:
+      - result_check_absent.changed == true
+      - result_check_absent.state == 'absent'
+
+# 5. Actual removal
+- name: Remove internal switch
+  microsoft.hyperv.hv_vswitch:
+    name: "{{ test_vswitch_internal }}"
+    state: absent
+  register: result_internal_absent
+
+- name: Assert internal switch removal
+  assert:
+    that:
+      - result_internal_absent.changed == true
