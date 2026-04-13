@@ -1,0 +1,2 @@
+minor_changes:
+  - hv_network_acl - Manage Standard and Extended Network Access Control Lists (ACLs) on Hyper-V virtual network adapters.

@@ -1,0 +1,29 @@
+---
+- name: Define test variables
+  set_fact:
+    test_vm_name: "AnsibleTestACLVM_{{ 99999 | random }}"
+    test_adapter_name: "TestAdapter"
+
+- block:
+    - name: Setup - Create a temporary dummy VM for testing
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_name }}"
+        state: present
+        generation: 2
+        memory_startup_bytes: "256MB"
+
+    - name: Setup - Add a network adapter
+      microsoft.hyperv.hv_network_adapter:
+        vm_name: "{{ test_vm_name }}"
+        name: "{{ test_adapter_name }}"
+        state: present
+
+    - name: Run hv_network_acl tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove temporary dummy VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_name }}"
+        state: absent
+      ignore_errors: true
