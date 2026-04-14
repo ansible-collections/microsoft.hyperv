@@ -40,7 +40,7 @@
     that:
       - result_internal_create.changed == true
       - result_internal_create.switch_type == 'Internal'
-      - result_internal_create.notes == ""
+      - result_internal_create.notes is none
       - result_internal_create.allow_management_os == true
       - result_internal_create.minimum_bandwidth_mode == 'None'
 

@@ -37,10 +37,6 @@ $state = $module.Params.state
 $acl_type = $module.Params.acl_type
 $action = $module.Params.action
 $direction = $module.Params.direction
-$local_ip_address = $module.Params.local_ip_address
-$remote_ip_address = $module.Params.remote_ip_address
-$local_mac_address = $module.Params.local_mac_address
-$remote_mac_address = $module.Params.remote_mac_address
 $weight = $module.Params.weight
 
 $module.Result.acl_type = $acl_type
@@ -49,8 +45,12 @@ $module.Result.state = $state
 # Helpers to normalize ANY
 function Convert-AclString {
     param([string]$Value)
-    if ([string]::IsNullOrEmpty($Value)) { return "ANY" }
-    if ($Value.ToUpper() -eq "ANY") { return "ANY" }
+    if ([string]::IsNullOrEmpty($Value)) {
+        return "ANY"
+    }
+    if ($Value.ToUpper() -eq "ANY") {
+        return "ANY"
+    }
     return $Value
 }
 
@@ -71,40 +71,56 @@ try {
     $dirMap = @{ "inbound" = 1; "outbound" = 2; "both" = 3 }
     $actMap = @{ "allow" = 1; "deny" = 2; "meter" = 3 }
 
-    $reqDir = if ($direction) { $dirMap[$direction.ToLower()] } else { $null }
-    $reqAct = if ($action) { $actMap[$action.ToLower()] } else { $null }
+    $reqDir = if ($direction) {
+        $dirMap[$direction.ToLower()]
+    }
+    else {
+        $null
+    }
+    $reqAct = if ($action) {
+        $actMap[$action.ToLower()]
+    }
+    else {
+        $null
+    }
 
+    # Property Maps
     $stdPropertyMap = @(
-        @{ Param = "local_ip_address"; Property = "LocalIPAddress" }
-        @{ Param = "remote_ip_address"; Property = "RemoteIPAddress" }
-        @{ Param = "local_mac_address"; Property = "LocalMacAddress" }
-        @{ Param = "remote_mac_address"; Property = "RemoteMacAddress" }
+        @{ Param = "local_ip_address"; Property = "LocalAddress"; Type = "acl_string"; CmdletParam = "LocalIPAddress" }
+        @{ Param = "remote_ip_address"; Property = "RemoteAddress"; Type = "acl_string"; CmdletParam = "RemoteIPAddress" }
+        @{ Param = "local_mac_address"; Property = "LocalAddress"; Type = "acl_string"; CmdletParam = "LocalMacAddress" }
+        @{ Param = "remote_mac_address"; Property = "RemoteAddress"; Type = "acl_string"; CmdletParam = "RemoteMacAddress" }
+    )
+
+    $extPropertyMap = @(
+        @{ Param = "local_ip_address"; Property = "LocalIPAddress"; Type = "acl_string" }
+        @{ Param = "remote_ip_address"; Property = "RemoteIPAddress"; Type = "acl_string" }
+        @{ Param = "local_port"; Property = "LocalPort"; Type = "acl_string" }
+        @{ Param = "remote_port"; Property = "RemotePort"; Type = "acl_string" }
+        @{ Param = "protocol"; Property = "Protocol"; Type = "acl_string" }
+        @{ Param = "stateful"; Property = "Stateful"; Type = "bool" }
+        @{ Param = "idle_session_timeout"; Property = "IdleSessionTimeout"; Type = "int" }
+        @{ Param = "isolation_id"; Property = "IsolationID"; Type = "int" }
     )
 
     if ($acl_type -eq "standard") {
         if ($action -eq "meter" -and $state -eq "present" -and
-            $null -eq $remote_ip_address -and $null -eq $local_ip_address -and
-            $null -eq $remote_mac_address -and $null -eq $local_mac_address) {
+            $null -eq $module.Params.remote_ip_address -and $null -eq $module.Params.local_ip_address -and
+            $null -eq $module.Params.remote_mac_address -and $null -eq $module.Params.local_mac_address) {
             $module.FailJson("Standard ACLs with action 'meter' require at least one IP or MAC parameter.")
         }
 
         $currentAcls = @(Get-VMNetworkAdapterAcl -VMNetworkAdapter $adapter)
         $targetAcl = $null
 
-        $n_locIP = Convert-AclString $local_ip_address
-        $n_remIP = Convert-AclString $remote_ip_address
+        $n_locIP = Convert-AclString $module.Params.local_ip_address
+        $n_remIP = Convert-AclString $module.Params.remote_ip_address
 
         foreach ($c in $currentAcls) {
             if ([int]$c.Direction -eq $reqDir -and
                 [int]$c.Action -eq $reqAct -and
                 (Convert-AclString $c.LocalAddress) -eq $n_locIP -and
                 (Convert-AclString $c.RemoteAddress) -eq $n_remIP) {
-
-                # Further check MACs if they are present in the object (Macs are only used if explicitly provided or ANY)
-                # Standard ACL objects handle Mac in LocalAddress/RemoteAddress if IP is not used, but Hyper-V cmdlet is abstracted.
-                # In PowerShell, Add-VMNetworkAdapterAcl separates them but Get-VMNetworkAdapterAcl combines them into 'LocalAddress'/'RemoteAddress'
-                # and uses LocalAddressType/RemoteAddressType (0=None, 1=Mac, 2=IP).
-                # We will attempt a simplified match for idempotency based on standard address fields.
                 $targetAcl = $c
                 break
             }
@@ -120,14 +136,20 @@ try {
                         Action = $action
                     }
                     $addParams += Get-HyperVParametersFromMap -PropertyMap $stdPropertyMap -AnsibleParams $module.Params
+
                     Add-VMNetworkAdapterAcl @addParams | Out-Null
+                    $currentAcls = @(Get-VMNetworkAdapterAcl -VMNetworkAdapter $adapter)
+                    $targetAcl = $currentAcls | Where-Object {
+                        [int]$_.Direction -eq $reqDir -and [int]$_.Action -eq $reqAct -and
+                        (Convert-AclString $_.LocalAddress) -eq $n_locIP -and
+                        (Convert-AclString $_.RemoteAddress) -eq $n_remIP
+                    }
                 }
             }
             $module.Result.action = $action
             $module.Result.direction = $direction
         }
         else {
-            # Absent
             if ($null -ne $targetAcl) {
                 $module.Result.changed = $true
                 if (-not $module.CheckMode) {
@@ -137,6 +159,7 @@ try {
                         Direction = $direction
                     }
                     $removeParams += Get-HyperVParametersFromMap -PropertyMap $stdPropertyMap -AnsibleParams $module.Params
+
                     Remove-VMNetworkAdapterAcl @removeParams | Out-Null
                 }
             }
@@ -161,9 +184,7 @@ try {
 
         $currentAcls = @(Get-VMNetworkAdapterExtendedAcl -VMNetworkAdapter $adapter)
         $targetAcl = $null
-
         foreach ($c in $currentAcls) {
-            # Extended ACLs are uniquely identified by Direction and Weight
             if ([int]$c.Direction -eq $reqDir -and $c.Weight -eq $weight) {
                 $targetAcl = $c
                 break
@@ -176,32 +197,18 @@ try {
                 $needsUpdate = $true
             }
             else {
-                if ([int]$targetAcl.Action -ne $reqAct) { $needsUpdate = $true }
-
-                foreach ($map in $extPropertyMap) {
-                    $paramValue = $module.Params.($map.Param)
-                    if ($null -eq $paramValue) { continue }
-
-                    $currentValue = $targetAcl.($map.Property)
-                    $isDifferent = $false
-
-                    switch ($map.Type) {
-                        "acl_string" { $isDifferent = ((Convert-AclString $currentValue) -ne (Convert-AclString $paramValue)) }
-                        "bool" { $isDifferent = ([bool]$currentValue -ne [bool]$paramValue) }
-                        default { $isDifferent = ($currentValue -ne $paramValue) }
-                    }
-
-                    if ($isDifferent) {
-                        $needsUpdate = $true
-                        break
-                    }
+                if ([int]$targetAcl.Action -ne $reqAct) {
+                    $needsUpdate = $true
+                }
+                if (-not $needsUpdate) {
+                    $needsUpdate = Test-HyperVPropertiesChanged -PropertyMap $extPropertyMap -CurrentObject $targetAcl -AnsibleParams $module.Params
                 }
             }
+
             if ($needsUpdate) {
                 $module.Result.changed = $true
                 if (-not $module.CheckMode) {
                     if ($null -ne $targetAcl) {
-                        # Hyper-V Extended ACLs must be removed before updating an existing weight
                         Remove-VMNetworkAdapterExtendedAcl -VMNetworkAdapter $adapter -Direction $direction -Weight $weight | Out-Null
                     }
 
@@ -212,30 +219,33 @@ try {
                         Weight = $weight
                     }
                     $addParams += Get-HyperVParametersFromMap -PropertyMap $extPropertyMap -AnsibleParams $module.Params
-
                     Add-VMNetworkAdapterExtendedAcl @addParams | Out-Null
+
+                    $adapterAcls = Get-VMNetworkAdapterExtendedAcl -VMNetworkAdapter $adapter
+                    $targetAcl = $adapterAcls | Where-Object { [int]$_.Direction -eq $reqDir -and $_.Weight -eq $weight }
                 }
             }
 
-            $adapterAcls = Get-VMNetworkAdapterExtendedAcl -VMNetworkAdapter $adapter
-            $finalAcls = @($adapterAcls | Where-Object { [int]$_.Direction -eq $reqDir -and $_.Weight -eq $weight })
-            if ($finalAcls.Count -gt 0) {
-                $finalAcl = $finalAcls[0]
-                $module.Result.action = $finalAcl.Action.ToString()
-                $module.Result.direction = $finalAcl.Direction.ToString()
-                $module.Result.weight = $finalAcl.Weight
-                $module.Result.local_ip_address = $finalAcl.LocalIPAddress
-                $module.Result.remote_ip_address = $finalAcl.RemoteIPAddress
-                $module.Result.local_port = $finalAcl.LocalPort
-                $module.Result.remote_port = $finalAcl.RemotePort
-                $module.Result.protocol = $finalAcl.Protocol
-                $module.Result.stateful = [bool]$finalAcl.Stateful
-                $module.Result.idle_session_timeout = $finalAcl.IdleSessionTimeout
-                $module.Result.isolation_id = $finalAcl.IsolationID
+            if ($targetAcl) {
+                Set-HyperVResultFromMap -PropertyMap $extPropertyMap -CurrentObject $targetAcl -ModuleResult $module.Result
+                $module.Result.action = $targetAcl.Action.ToString()
+                $module.Result.direction = $targetAcl.Direction.ToString()
+                $module.Result.weight = $targetAcl.Weight
+            }
+            elseif ($module.CheckMode) {
+                # Fill check mode result from params
+                $module.Result.action = $action
+                $module.Result.direction = $direction
+                $module.Result.weight = $weight
+                foreach ($map in $extPropertyMap) {
+                    $paramValue = $module.Params.($map.Param)
+                    if ($null -ne $paramValue) {
+                        $module.Result.($map.Param) = $paramValue
+                    }
+                }
             }
         }
         else {
-            # Absent
             if ($null -ne $targetAcl) {
                 $module.Result.changed = $true
                 if (-not $module.CheckMode) {

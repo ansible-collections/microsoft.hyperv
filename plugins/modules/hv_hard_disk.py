@@ -31,13 +31,6 @@ options:
     type: str
     choices: [ present, absent ]
     default: present
-  controller_type:
-    description:
-      - The type of controller to attach the disk to.
-      - C(SCSI) is recommended for Generation 2 VMs.
-      - C(IDE) is only supported for Generation 1 VMs.
-    type: str
-    choices: [ IDE, SCSI ]
   controller_number:
     description:
       - The index of the controller to attach the disk to.

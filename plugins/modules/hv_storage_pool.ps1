@@ -4,6 +4,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
+#AnsibleRequires -PowerShell ansible_collections.microsoft.hyperv.plugins.module_utils.HyperV
 
 $spec = @{
     options = @{
@@ -27,6 +28,13 @@ $state = $module.Params.state
 $module.Result.name = $name
 $module.Result.type = $poolType
 
+# Property Map for change detection
+# Note: Paths are managed via Add/Remove-VMStoragePath, so not directly in Set-VMResourcePool
+$propertyMap = @(
+    @{ Param = "parent_name"; Property = "ParentName"; Type = "list" }
+    @{ Param = "paths"; Property = "Paths"; Type = "list" }
+)
+
 try {
     # Check if pool exists
     $pool = Get-VMResourcePool -Name $name -ResourcePoolType $poolType -ErrorAction SilentlyContinue
@@ -48,42 +56,38 @@ try {
                     Name = $name
                     ResourcePoolType = $poolType
                 }
-                if ($null -ne $paths) { $newParams.Paths = $paths }
-                if ($null -ne $parentName) { $newParams.ParentName = $parentName }
+                if ($null -ne $paths) {
+
+                    $newParams.Paths = $paths
+
+                }
+                if ($null -ne $parentName) {
+
+                    $newParams.ParentName = $parentName
+
+                }
 
                 New-VMResourcePool @newParams | Out-Null
             }
             else {
-                # Pool exists, check for changes (Paths and ParentName)
-                $setParams = @{
-                    Name = $name
-                    ResourcePoolType = $poolType
-                }
-
-                if ($null -ne $paths) {
-                    $currentPaths = @($pool.Paths | Sort-Object)
-                    $desiredPaths = @($paths | Sort-Object)
-                    if (($currentPaths -join ",") -ne ($desiredPaths -join ",")) {
-                        $setParams.Paths = $paths
-                        $changed = $true
-                    }
-                }
-
-                # ParentName is an array in the object, but usually has one element
-                if ($null -ne $parentName -and $pool.ParentName -notcontains $parentName) {
-                    $setParams.ParentName = $parentName
-                    $changed = $true
-                }
+                # Pool exists, check for changes
+                $changed = Test-HyperVPropertiesChanged -PropertyMap $propertyMap -CurrentObject $pool -AnsibleParams $module.Params
 
                 $module.Result.changed = $changed
                 if ($module.CheckMode) {
-                    $module.Result.paths = if ($null -ne $paths) { $paths } else { $pool.Paths }
+                    Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $pool -ModuleResult $module.Result
+                    # Override paths for check mode display
+                    if ($null -ne $paths) {
+
+                        $module.Result.paths = $paths
+
+                    }
                     $module.ExitJson()
                 }
 
                 if ($changed) {
-                    if ($null -ne $setParams.ParentName) {
-                        Set-VMResourcePool @setParams | Out-Null
+                    if ($null -ne $parentName -and $pool.ParentName -notcontains $parentName) {
+                        Set-VMResourcePool -Name $name -ResourcePoolType $poolType -ParentName $parentName | Out-Null
                     }
 
                     if ($null -ne $paths) {
@@ -105,9 +109,8 @@ try {
                 }
             }
 
-            # Refresh for return data
             $finalPool = Get-VMResourcePool -Name $name -ResourcePoolType $poolType
-            $module.Result.paths = @($finalPool.Paths)
+            Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $finalPool -ModuleResult $module.Result
         }
         "absent" {
             if (-not $poolExists) {

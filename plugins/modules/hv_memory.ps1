@@ -22,18 +22,34 @@ $spec = @{
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
 $name = $module.Params.name
-$dynamic_memory_enabled = $module.Params.dynamic_memory_enabled
 $startup_bytes = $module.Params.startup_bytes
 $minimum_bytes = $module.Params.minimum_bytes
 $maximum_bytes = $module.Params.maximum_bytes
-$buffer = $module.Params.buffer
-$priority = $module.Params.priority
 
-if ($null -ne $startup_bytes) { $startup_bytes = Convert-ToByte -SizeString $startup_bytes }
-if ($null -ne $minimum_bytes) { $minimum_bytes = Convert-ToByte -SizeString $minimum_bytes }
-if ($null -ne $maximum_bytes) { $maximum_bytes = Convert-ToByte -SizeString $maximum_bytes }
+if ($null -ne $startup_bytes) {
+    $startup_bytes = Convert-ToByte -SizeString $startup_bytes
+    $module.Params.startup_bytes = $startup_bytes
+}
+if ($null -ne $minimum_bytes) {
+    $minimum_bytes = Convert-ToByte -SizeString $minimum_bytes
+    $module.Params.minimum_bytes = $minimum_bytes
+}
+if ($null -ne $maximum_bytes) {
+    $maximum_bytes = Convert-ToByte -SizeString $maximum_bytes
+    $module.Params.maximum_bytes = $maximum_bytes
+}
 
 $module.Result.name = $name
+
+# Define the mapping between Ansible params and Hyper-V properties
+$propertyMap = @(
+    @{ Param = "dynamic_memory_enabled"; Property = "DynamicMemoryEnabled"; Type = "bool" }
+    @{ Param = "startup_bytes"; Property = "Startup"; Type = "long"; CmdletParam = "StartupBytes" }
+    @{ Param = "minimum_bytes"; Property = "Minimum"; Type = "long"; CmdletParam = "MinimumBytes" }
+    @{ Param = "maximum_bytes"; Property = "Maximum"; Type = "long"; CmdletParam = "MaximumBytes" }
+    @{ Param = "buffer"; Property = "Buffer"; Type = "int" }
+    @{ Param = "priority"; Property = "Priority"; Type = "int" }
+)
 
 try {
     $vm = Get-VM -Name $name -ErrorAction SilentlyContinue
@@ -43,59 +59,45 @@ try {
     }
 
     $mem = Get-VMMemory -VMName $name -ErrorAction SilentlyContinue
-
     if (-not $mem) {
         $module.FailJson("Failed to retrieve memory configuration for VM '$name'.")
     }
 
-    $changed = $false
-    $cmdParams = @{
-        VMName = $name
-    }
-
-    $propertyMap = @(
-        @{ Name = 'dynamic_memory_enabled'; Current = [bool]$mem.DynamicMemoryEnabled; Desired = $dynamic_memory_enabled; CmdletParam = 'DynamicMemoryEnabled' }
-        @{ Name = 'startup_bytes'; Current = [long]$mem.Startup; Desired = $startup_bytes; CmdletParam = 'StartupBytes' }
-        @{ Name = 'minimum_bytes'; Current = [long]$mem.Minimum; Desired = $minimum_bytes; CmdletParam = 'MinimumBytes' }
-        @{ Name = 'maximum_bytes'; Current = [long]$mem.Maximum; Desired = $maximum_bytes; CmdletParam = 'MaximumBytes' }
-        @{ Name = 'buffer'; Current = [int]$mem.Buffer; Desired = $buffer; CmdletParam = 'Buffer' }
-        @{ Name = 'priority'; Current = [int]$mem.Priority; Desired = $priority; CmdletParam = 'Priority' }
-    )
-
-    foreach ($prop in $propertyMap) {
-        $module.Result.($prop.Name) = $prop.Current
-
-        if ($null -ne $prop.Desired -and $prop.Current -ne $prop.Desired) {
-            $cmdParams.($prop.CmdletParam) = $prop.Desired
-            $changed = $true
-
-            if ($module.CheckMode) {
-                $module.Result.($prop.Name) = $prop.Desired
-            }
-        }
-    }
-
+    $changed = Test-HyperVPropertiesChanged -PropertyMap $propertyMap -CurrentObject $mem -AnsibleParams $module.Params
     $module.Result.changed = $changed
 
-    if ($changed -and -not $module.CheckMode) {
-        if ($vm.State -ne 'Off' -and $null -ne $startup_bytes) {
+    if ($changed) {
+        if ($vm.State -ne 'Off' -and $null -ne $module.Params.startup_bytes) {
             $module.FailJson("Cannot apply Memory changes (Startup Bytes) while the VM is not Off. Stop the VM first.")
         }
 
-        # Handle Set-VMMemory dependency rules:
-        # Minimum cannot be > Startup, Startup cannot be > Maximum
-        # If changing multiple, it's safer to apply DynamicMemoryEnabled, Min/Max/Startup in one unified command
-        # Hyper-V cmdlet handles the cross-property validation natively as long as all params are provided at once.
-        Set-VMMemory @cmdParams | Out-Null
+        if ($module.CheckMode) {
+            Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $mem -ModuleResult $module.Result
+            # Override with desired
+            foreach ($map in $propertyMap) {
+                $paramValue = $module.Params.($map.Param)
+                if ($null -ne $paramValue) {
+                    $module.Result.($map.Param) = $paramValue
+                }
+            }
+            $module.ExitJson()
+        }
 
-        $newMem = Get-VMMemory -VMName $name
-        $module.Result.dynamic_memory_enabled = [bool]$newMem.DynamicMemoryEnabled
-        $module.Result.startup_bytes = [long]$newMem.Startup
-        $module.Result.minimum_bytes = [long]$newMem.Minimum
-        $module.Result.maximum_bytes = [long]$newMem.Maximum
-        $module.Result.buffer = [int]$newMem.Buffer
-        $module.Result.priority = [int]$newMem.Priority
+        # Build parameters using map but handle the CmdletParam overrides
+        $cmdParams = @{ VMName = $name }
+        foreach ($map in $propertyMap) {
+            $paramValue = $module.Params.($map.Param)
+            if ($null -ne $paramValue) {
+                $targetParam = if ($null -ne $map.CmdletParam) { $map.CmdletParam } else { $map.Property }
+                $cmdParams.($targetParam) = $paramValue
+            }
+        }
+
+        Set-VMMemory @cmdParams | Out-Null
+        $mem = Get-VMMemory -VMName $name
     }
+
+    Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $mem -ModuleResult $module.Result
 
     $module.ExitJson()
 }
