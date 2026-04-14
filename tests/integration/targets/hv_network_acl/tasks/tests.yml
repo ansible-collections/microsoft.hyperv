@@ -1,0 +1,155 @@
+---
+# 1. Standard ACL Tests
+- name: Test - Add Standard ACL (Check Mode)
+  microsoft.hyperv.hv_network_acl:
+    vm_name: "{{ test_vm_name }}"
+    adapter_name: "{{ test_adapter_name }}"
+    acl_type: standard
+    direction: inbound
+    action: deny
+    remote_ip_address: "192.168.1.100"
+    state: present
+  check_mode: true
+  register: std_acl_check
+
+- name: Assert Standard ACL Check Mode
+  assert:
+    that:
+      - std_acl_check.changed == true
+      - std_acl_check.state == 'present'
+
+- name: Test - Add Standard ACL
+  microsoft.hyperv.hv_network_acl:
+    vm_name: "{{ test_vm_name }}"
+    adapter_name: "{{ test_adapter_name }}"
+    acl_type: standard
+    direction: inbound
+    action: deny
+    remote_ip_address: "192.168.1.100"
+    state: present
+  register: std_acl_add
+
+- name: Assert Standard ACL Add
+  assert:
+    that:
+      - std_acl_add.changed == true
+
+- name: Test - Idempotency Add Standard ACL
+  microsoft.hyperv.hv_network_acl:
+    vm_name: "{{ test_vm_name }}"
+    adapter_name: "{{ test_adapter_name }}"
+    acl_type: standard
+    direction: inbound
+    action: deny
+    remote_ip_address: "192.168.1.100"
+    state: present
+  register: std_acl_idem
+
+- name: Assert Standard ACL Idempotency
+  assert:
+    that:
+      - std_acl_idem.changed == false
+
+# 2. Extended ACL Tests
+- name: Test - Add Extended ACL
+  microsoft.hyperv.hv_network_acl:
+    vm_name: "{{ test_vm_name }}"
+    adapter_name: "{{ test_adapter_name }}"
+    acl_type: extended
+    direction: outbound
+    action: allow
+    protocol: TCP
+    remote_port: "443"
+    weight: 10
+    state: present
+  register: ext_acl_add
+
+- name: Assert Extended ACL Add
+  assert:
+    that:
+      - ext_acl_add.changed == true
+      - ext_acl_add.weight == 10
+
+- name: Test - Idempotency Add Extended ACL
+  microsoft.hyperv.hv_network_acl:
+    vm_name: "{{ test_vm_name }}"
+    adapter_name: "{{ test_adapter_name }}"
+    acl_type: extended
+    direction: outbound
+    action: allow
+    protocol: TCP
+    remote_port: "443"
+    weight: 10
+    state: present
+  register: ext_acl_idem
+
+- name: Assert Extended ACL Idempotency
+  assert:
+    that:
+      - ext_acl_idem.changed == false
+
+- name: Test - Update Extended ACL (Same Weight)
+  microsoft.hyperv.hv_network_acl:
+    vm_name: "{{ test_vm_name }}"
+    adapter_name: "{{ test_adapter_name }}"
+    acl_type: extended
+    direction: outbound
+    action: allow
+    protocol: TCP
+    remote_port: "80" # Changed port
+    weight: 10
+    state: present
+  register: ext_acl_update
+
+- name: Assert Extended ACL Update
+  assert:
+    that:
+      - ext_acl_update.changed == true
+
+# 3. Removal Tests
+- name: Test - Remove Extended ACL (Check Mode)
+  microsoft.hyperv.hv_network_acl:
+    vm_name: "{{ test_vm_name }}"
+    adapter_name: "{{ test_adapter_name }}"
+    acl_type: extended
+    direction: outbound
+    weight: 10
+    state: absent
+  check_mode: true
+  register: ext_acl_remove_check
+
+- name: Assert Remove Extended ACL Check Mode
+  assert:
+    that:
+      - ext_acl_remove_check.changed == true
+
+- name: Test - Remove Extended ACL
+  microsoft.hyperv.hv_network_acl:
+    vm_name: "{{ test_vm_name }}"
+    adapter_name: "{{ test_adapter_name }}"
+    acl_type: extended
+    direction: outbound
+    weight: 10
+    state: absent
+  register: ext_acl_remove
+
+- name: Assert Remove Extended ACL
+  assert:
+    that:
+      - ext_acl_remove.changed == true
+
+- name: Test - Remove Standard ACL
+  microsoft.hyperv.hv_network_acl:
+    vm_name: "{{ test_vm_name }}"
+    adapter_name: "{{ test_adapter_name }}"
+    acl_type: standard
+    direction: inbound
+    action: deny
+    remote_ip_address: "192.168.1.100"
+    state: absent
+  register: std_acl_remove
+
+- name: Assert Remove Standard ACL
+  assert:
+    that:
+      - std_acl_remove.changed == true
