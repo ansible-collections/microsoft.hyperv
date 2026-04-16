@@ -4,7 +4,7 @@
     test_gen1: "AnsibleTestBoot_Gen1_{{ 99999 | random }}"
     test_gen2: "AnsibleTestBoot_Gen2_{{ 99999 | random }}"
 
-- name: Setup - Create temporary Gen1 and Gen2 VMs
+- name: Run hv_vm_boot integration tests
   block:
     - name: Create Gen1 VM
       microsoft.hyperv.hv_vm:
@@ -13,12 +13,34 @@
         generation: 1
         memory_startup_bytes: "256MB"
 
+    - name: Add Network Adapter to Gen1
+      microsoft.hyperv.hv_network_adapter:
+        vm_name: "{{ test_gen1 }}"
+        name: "StandardAdapter"
+        state: present
+
+    - name: Add DVD Drive to Gen1
+      microsoft.hyperv.hv_dvd_drive:
+        vm_name: "{{ test_gen1 }}"
+        state: present
+
     - name: Create Gen2 VM
       microsoft.hyperv.hv_vm:
         name: "{{ test_gen2 }}"
         state: present
         generation: 2
         memory_startup_bytes: "256MB"
+
+    - name: Add Network Adapter to Gen2
+      microsoft.hyperv.hv_network_adapter:
+        vm_name: "{{ test_gen2 }}"
+        name: "Gen2Adapter"
+        state: present
+
+    - name: Add DVD Drive to Gen2
+      microsoft.hyperv.hv_dvd_drive:
+        vm_name: "{{ test_gen2 }}"
+        state: present
 
     - name: Run tests
       ansible.builtin.include_tasks: tests.yml

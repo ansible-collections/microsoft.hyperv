@@ -8,15 +8,15 @@ __metaclass__ = type
 DOCUMENTATION = r'''
 ---
 module: hv_vm_boot
-short_description: Manage boot configuration for Hyper-V Virtual Machines
+short_description: Configure Virtual Machine boot and firmware settings
 description:
-  - Manage Boot settings for Generation 1 (BIOS) and Generation 2 (Firmware) Virtual Machines.
-  - Controls Secure Boot, Secure Boot Templates, NumLock state, and Startup Device Order.
-  - Automatically identifies VM Generation and routes requests to Set-VMBios or Set-VMFirmware.
+  - Manage boot order, BIOS, and firmware settings for Hyper-V Virtual Machines.
+  - Supports Generation 1 (BIOS) and Generation 2 (UEFI/Firmware) VMs.
+  - Configure Secure Boot, NumLock state, and device boot sequence.
 options:
   name:
     description:
-      - The name of the virtual machine to configure.
+      - The name of the virtual machine.
     type: str
     required: true
     aliases: [ vm_name ]
@@ -38,28 +38,41 @@ options:
     type: bool
   startup_order:
     description:
-      - The boot order sequence of the devices.
+      - The boot order sequence of the devices for Generation 1 VMs.
       - Incomplete lists will automatically have the remaining existing devices appended.
       - Supported on Generation 1 Virtual Machines only.
     type: list
     elements: str
-    choices: [ CD, Floppy, IDE, LegacyNetworkAdapter ]
+    choices: [ CD, Floppy, IDE, LegacyNetworkAdapter, NetworkAdapter, VHD ]
+  boot_order:
+    description:
+      - The boot order sequence of the devices for Generation 2 VMs.
+      - Accepts a list of device types - C(Network), C(DVD), C(SCSI), C(File).
+      - Devices of the same type will be grouped together in the order they appear.
+      - Supported on Generation 2 Virtual Machines only.
+    type: list
+    elements: str
+    choices: [ Network, DVD, SCSI, File ]
 author:
   - Ansible Cloud Team (@ansible)
 '''
 
 EXAMPLES = r'''
-- name: Configure Secure Boot for a Linux Generation 2 VM
+- name: Configure Secure Boot and Boot Order for a Gen2 VM
   microsoft.hyperv.hv_vm_boot:
-    name: Gen2LinuxVM
+    name: Gen2VM
     secure_boot: true
-    secure_boot_template: MicrosoftUEFICertificateAuthority
+    boot_order:
+      - SCSI
+      - DVD
+      - Network
 
-- name: Set Startup Order and NumLock for a Generation 1 VM
+- name: Set Startup Order and NumLock for a Gen1 VM
   microsoft.hyperv.hv_vm_boot:
     name: Gen1LegacyVM
     num_lock: true
     startup_order:
+      - VHD
       - CD
       - IDE
 '''
@@ -95,5 +108,11 @@ startup_order:
     returned: success
     type: list
     elements: str
-    sample: ["CD", "IDE", "LegacyNetworkAdapter", "Floppy"]
+    sample: ["VHD", "CD", "IDE", "LegacyNetworkAdapter"]
+boot_order:
+    description: The final Boot Order sequence of device types (Gen2 only).
+    returned: success
+    type: list
+    elements: str
+    sample: ["SCSI", "DVD", "Network"]
 '''

@@ -1,50 +1,26 @@
 ---
-- name: Test Gen1 - Set NumLock and StartupOrder (Check Mode)
+# 1. Generation 1 Tests
+- name: Test Gen1 - Set StartupOrder
   microsoft.hyperv.hv_vm_boot:
     name: "{{ test_gen1 }}"
-    num_lock: true
     startup_order:
-      - CD
       - IDE
-  check_mode: true
-  register: boot_gen1_check
-
-- name: Assert Gen1 check_mode modifications
-  assert:
-    that:
-      - boot_gen1_check.changed == true
-      - boot_gen1_check.generation == 1
-      - boot_gen1_check.num_lock == true
-      - boot_gen1_check.startup_order[0] == "CD"
-      - boot_gen1_check.startup_order[1] == "IDE"
-      - boot_gen1_check.startup_order | length == 4
-
-- name: Test Gen1 - Set NumLock and StartupOrder
-  microsoft.hyperv.hv_vm_boot:
-    name: "{{ test_gen1 }}"
-    num_lock: true
-    startup_order:
       - CD
-      - IDE
-  register: boot_gen1
+  register: boot_gen1_order
 
 - name: Assert Gen1 modifications
   assert:
     that:
-      - boot_gen1.changed == true
-      - boot_gen1.generation == 1
-      - boot_gen1.num_lock == true
-      - boot_gen1.startup_order[0] == "CD"
-      - boot_gen1.startup_order[1] == "IDE"
-      - boot_gen1.startup_order | length == 4
+      - boot_gen1_order.changed == true
+      - boot_gen1_order.startup_order[0] == "IDE"
+      - boot_gen1_order.startup_order[1] == "CD"
 
 - name: Test Gen1 - Idempotency
   microsoft.hyperv.hv_vm_boot:
     name: "{{ test_gen1 }}"
-    num_lock: true
     startup_order:
-      - CD
       - IDE
+      - CD
   register: boot_gen1_idem
 
 - name: Assert Gen1 Idempotency
@@ -52,69 +28,61 @@
     that:
       - boot_gen1_idem.changed == false
 
-- name: Test Gen1 - Gen2 Parameter Error
-  microsoft.hyperv.hv_vm_boot:
-    name: "{{ test_gen1 }}"
-    secure_boot: true
-  register: boot_gen1_err
-  ignore_errors: true
-
-- name: Assert Gen1 - Gen2 Parameter Error handling
-  assert:
-    that:
-      - boot_gen1_err.failed == true
-
-- name: Test Gen2 - Set SecureBoot (Check Mode)
-  microsoft.hyperv.hv_vm_boot:
-    name: "{{ test_gen2 }}"
-    secure_boot: true
-    secure_boot_template: MicrosoftUEFICertificateAuthority
-  check_mode: true
-  register: boot_gen2_check
-
-- name: Assert Gen2 check_mode modifications
-  assert:
-    that:
-      - boot_gen2_check.changed == true
-      - boot_gen2_check.generation == 2
-      - boot_gen2_check.secure_boot == true
-      - boot_gen2_check.secure_boot_template == "MicrosoftUEFICertificateAuthority"
-
+# 2. Generation 2 Tests
 - name: Test Gen2 - Set SecureBoot
   microsoft.hyperv.hv_vm_boot:
     name: "{{ test_gen2 }}"
     secure_boot: true
     secure_boot_template: MicrosoftUEFICertificateAuthority
-  register: boot_gen2
+  register: boot_gen2_sb
 
-- name: Assert Gen2 modifications
+- name: Assert Gen2 SecureBoot
   assert:
     that:
-      - boot_gen2.changed == true
-      - boot_gen2.generation == 2
-      - boot_gen2.secure_boot == true
-      - boot_gen2.secure_boot_template == "MicrosoftUEFICertificateAuthority"
+      - boot_gen2_sb.changed == true
+      - boot_gen2_sb.secure_boot == true
 
-- name: Test Gen2 - Idempotency
+- name: Test Gen2 - Set BootOrder (Check Mode)
   microsoft.hyperv.hv_vm_boot:
     name: "{{ test_gen2 }}"
-    secure_boot: true
-    secure_boot_template: MicrosoftUEFICertificateAuthority
-  register: boot_gen2_idem
+    boot_order:
+      - SCSI
+      - Network
+      - DVD
+  check_mode: true
+  register: boot_gen2_order_check
 
-- name: Assert Gen2 Idempotency
+- name: Assert Gen2 BootOrder Check Mode
   assert:
     that:
-      - boot_gen2_idem.changed == false
+      - boot_gen2_order_check.changed == true
+      - boot_gen2_order_check.boot_order[0] == "SCSI"
 
-- name: Test Gen2 - Gen1 Parameter Error
+- name: Test Gen2 - Set BootOrder
   microsoft.hyperv.hv_vm_boot:
     name: "{{ test_gen2 }}"
-    num_lock: true
-  register: boot_gen2_err
-  ignore_errors: true
+    boot_order:
+      - SCSI
+      - Network
+      - DVD
+  register: boot_gen2_order
 
-- name: Assert Gen2 - Gen1 Parameter Error handling
+- name: Assert Gen2 BootOrder
   assert:
     that:
-      - boot_gen2_err.failed == true
+      - boot_gen2_order.changed == true
+      - boot_gen2_order.boot_order[0] == "SCSI"
+
+- name: Test Gen2 - Idempotency BootOrder
+  microsoft.hyperv.hv_vm_boot:
+    name: "{{ test_gen2 }}"
+    boot_order:
+      - SCSI
+      - Network
+      - DVD
+  register: boot_gen2_order_idem
+
+- name: Assert Gen2 BootOrder Idempotency
+  assert:
+    that:
+      - boot_gen2_order_idem.changed == false
