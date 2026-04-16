@@ -42,7 +42,12 @@ try {
                 $module.Result.checkpoint = @{
                     id = $snapshot.Id.ToString()
                     creation_time = $snapshot.CreationTime.ToString("o")
-                    parent_id = if ($snapshot.ParentSnapshotId) { $snapshot.ParentSnapshotId.ToString() } else { $null }
+                    parent_id = if ($snapshot.ParentSnapshotId) {
+                        $snapshot.ParentSnapshotId.ToString()
+                    }
+                    else {
+                        $null
+                    }
                 }
                 $module.ExitJson()
             }
@@ -107,7 +112,12 @@ try {
         $module.Result.checkpoint = @{
             id = $snapshot.Id.ToString()
             creation_time = $snapshot.CreationTime.ToString("o")
-            parent_id = if ($snapshot.ParentSnapshotId) { $snapshot.ParentSnapshotId.ToString() } else { $null }
+            parent_id = if ($snapshot.ParentSnapshotId) {
+                $snapshot.ParentSnapshotId.ToString()
+            }
+            else {
+                $null
+            }
         }
     }
 
