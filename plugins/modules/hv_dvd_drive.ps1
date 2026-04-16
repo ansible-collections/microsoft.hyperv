@@ -4,6 +4,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
+#AnsibleRequires -PowerShell ansible_collections.microsoft.hyperv.plugins.module_utils.HyperV
 
 $spec = @{
     options = @{
@@ -29,6 +30,13 @@ if ($state -eq "mounted" -and $null -eq $path) {
 }
 
 $module.Result.vm_name = $vm_name
+
+# Define property map for result mapping and basic change detection
+$propertyMap = @(
+    @{ Param = "path"; Property = "Path"; Type = "string" }
+    @{ Param = "controller_number"; Property = "ControllerNumber"; Type = "int" }
+    @{ Param = "controller_location"; Property = "ControllerLocation"; Type = "int" }
+)
 
 try {
     $vm = Get-VM -Name $vm_name -ErrorAction SilentlyContinue
@@ -99,17 +107,21 @@ try {
             $changed = ($null -ne $existingDrive.Path -and $existingDrive.Path -ne "")
             $module.Result.changed = $changed
             $module.Result.state = "ejected"
-            $module.Result.path = $null
-            $module.Result.controller_number = $existingDrive.ControllerNumber
-            $module.Result.controller_location = $existingDrive.ControllerLocation
 
             if ($changed) {
                 if ($module.CheckMode) {
+                    Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $existingDrive -ModuleResult $module.Result
+                    $module.Result.path = $null
                     $module.ExitJson()
                 }
 
                 Set-VMDvdDrive -VMDvdDrive $existingDrive -Path $null | Out-Null
+                $existingDrive = Get-VMDvdDrive -VMName $vm_name | Where-Object {
+                    $_.ControllerNumber -eq $existingDrive.ControllerNumber -and $_.ControllerLocation -eq $existingDrive.ControllerLocation
+                }
             }
+            Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $existingDrive -ModuleResult $module.Result
+            $module.Result.path = $null
         }
         default {
             # Handle 'present' and 'mounted'
@@ -120,7 +132,7 @@ try {
                 $changed = $true
             }
             else {
-                # Check path differences
+                # Check path differences manually as it requires normalization
                 if ($state -eq "mounted" -or ($state -eq "present" -and $null -ne $path)) {
                     if ($existingDrive.Path -ne $fullPath -and $existingDrive.Path -ne $path) {
                         $changed = $true
@@ -133,28 +145,44 @@ try {
 
             if ($module.CheckMode) {
                 if ($addRequired) {
-                    if ($null -ne $controller_number) { $module.Result.controller_number = $controller_number }
-                    if ($null -ne $controller_location) { $module.Result.controller_location = $controller_location }
+                    if ($null -ne $controller_number) {
+
+                        $module.Result.controller_number = $controller_number
+
+                    }
+                    if ($null -ne $controller_location) {
+
+                        $module.Result.controller_location = $controller_location
+
+                    }
                 }
                 else {
-                    $module.Result.controller_number = $existingDrive.ControllerNumber
-                    $module.Result.controller_location = $existingDrive.ControllerLocation
+                    Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $existingDrive -ModuleResult $module.Result
                 }
 
                 if ($changed -and $null -ne $fullPath) {
                     $module.Result.path = $fullPath
-                }
-                elseif (-not $changed -and $existingDrive) {
-                    $module.Result.path = $existingDrive.Path
                 }
                 $module.ExitJson()
             }
 
             if ($addRequired) {
                 $addParams = @{ VMName = $vm_name }
-                if ($null -ne $controller_number) { $addParams.ControllerNumber = $controller_number }
-                if ($null -ne $controller_location) { $addParams.ControllerLocation = $controller_location }
-                if ($null -ne $fullPath) { $addParams.Path = $fullPath }
+                if ($null -ne $controller_number) {
+
+                    $addParams.ControllerNumber = $controller_number
+
+                }
+                if ($null -ne $controller_location) {
+
+                    $addParams.ControllerLocation = $controller_location
+
+                }
+                if ($null -ne $fullPath) {
+
+                    $addParams.Path = $fullPath
+
+                }
 
                 $existingDrive = Add-VMDvdDrive @addParams -Passthru
             }
@@ -166,9 +194,7 @@ try {
                 }
             }
 
-            $module.Result.path = $existingDrive.Path
-            $module.Result.controller_number = $existingDrive.ControllerNumber
-            $module.Result.controller_location = $existingDrive.ControllerLocation
+            Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $existingDrive -ModuleResult $module.Result
         }
     }
 

@@ -4,15 +4,15 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
+#AnsibleRequires -PowerShell ansible_collections.microsoft.hyperv.plugins.module_utils.HyperV
 
 $spec = @{
     options = @{
         vm_name = @{ type = "str"; required = $true }
         path = @{ type = "str"; required = $true }
-        state = @{ type = "str"; default = "present"; choices = @("present", "absent") }
-        controller_type = @{ type = "str"; choices = @("IDE", "SCSI") }
         controller_number = @{ type = "int" }
         controller_location = @{ type = "int" }
+        state = @{ type = "str"; default = "present"; choices = @("present", "absent") }
     }
     supports_check_mode = $true
 }
@@ -22,7 +22,6 @@ $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 $vm_name = $module.Params.vm_name
 $path = $module.Params.path
 $state = $module.Params.state
-$controller_type = $module.Params.controller_type
 $controller_number = $module.Params.controller_number
 $controller_location = $module.Params.controller_location
 
@@ -30,104 +29,117 @@ $module.Result.vm_name = $vm_name
 $module.Result.path = $path
 $module.Result.state = $state
 
+# Property map for result mapping and basic matching
+$propertyMap = @(
+    @{ Param = "path"; Property = "Path"; Type = "string" }
+    @{ Param = "controller_number"; Property = "ControllerNumber"; Type = "int" }
+    @{ Param = "controller_location"; Property = "ControllerLocation"; Type = "int" }
+)
+
 try {
     $vm = Get-VM -Name $vm_name -ErrorAction SilentlyContinue
     if (-not $vm) {
         $module.FailJson("Virtual Machine '$vm_name' not found.")
     }
 
-    # Normalize path for comparison (Hyper-V usually returns absolute paths)
-    $fullPath = $null
-    if ($path) {
-        $fullPath = (Get-Item -LiteralPath $path -ErrorAction SilentlyContinue).FullName
-        if (-not $fullPath) {
-            # VHD might not exist yet if being provisioned in the same playbook, but this module expects existing VHD.
-            # However, for detachment we might not care if file is deleted already.
-            $fullPath = $path
-        }
+    # Normalize path for comparison
+    $fullPath = (Get-Item -LiteralPath $path -ErrorAction SilentlyContinue).FullName
+    if (-not $fullPath) {
+        $fullPath = $path
     }
 
-    # Get existing hard drives
-    $drives = Get-VMHardDiskDrive -VMName $vm_name
+    # Find the hard disk drive
+    $drives = Get-VMHardDiskDrive -VMName $vm_name -ErrorAction SilentlyContinue
     $existingDrive = $null
-    foreach ($drive in $drives) {
-        if ($drive.Path -eq $fullPath -or $drive.Path -eq $path) {
-            $existingDrive = $drive
-            break
+
+    if ($drives) {
+        foreach ($drive in $drives) {
+            if ($drive.Path -eq $fullPath) {
+                $existingDrive = $drive
+                break
+            }
         }
     }
 
-    if ($state -eq "present") {
-        if ($existingDrive) {
-            $module.Result.controller_type = $existingDrive.ControllerType.ToString()
-            $module.Result.controller_number = $existingDrive.ControllerNumber
-            $module.Result.controller_location = $existingDrive.ControllerLocation
+    switch ($state) {
+        "present" {
+            $changed = ($null -eq $existingDrive)
 
-            # Check if it needs moving (if specific location requested)
-            $needsMoving = $false
-            if ($null -ne $controller_type -and $existingDrive.ControllerType.ToString() -ne $controller_type) { $needsMoving = $true }
-            if ($null -ne $controller_number -and $existingDrive.ControllerNumber -ne $controller_number) { $needsMoving = $true }
-            if ($null -ne $controller_location -and $existingDrive.ControllerLocation -ne $controller_location) { $needsMoving = $true }
+            if (-not $changed) {
+                # Check for controller relocation
+                if ($null -ne $controller_number -and $existingDrive.ControllerNumber -ne $controller_number) {
 
-            if (-not $needsMoving) {
+                    $changed = $true
+
+                }
+                if ($null -ne $controller_location -and $existingDrive.ControllerLocation -ne $controller_location) {
+
+                    $changed = $true
+
+                }
+            }
+
+            $module.Result.changed = $changed
+
+            if ($module.CheckMode) {
+                if ($changed) {
+                    $module.Result.path = $fullPath
+                    if ($null -ne $controller_number) {
+
+                        $module.Result.controller_number = $controller_number
+
+                    }
+                    if ($null -ne $controller_location) {
+
+                        $module.Result.controller_location = $controller_location
+
+                    }
+                }
+                else {
+                    Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $existingDrive -ModuleResult $module.Result
+                }
                 $module.ExitJson()
             }
 
-            # If it needs moving, we'll remove and re-add in this implementation for simplicity
-            # but usually you'd use Set-VMHardDiskDrive if it's the same controller type.
+            if ($changed) {
+                if ($null -ne $existingDrive) {
+                    # Remove first to relocate
+                    Remove-VMHardDiskDrive -VMHardDiskDrive $existingDrive | Out-Null
+                }
+
+                $addParams = @{
+                    VMName = $vm_name
+                    Path = $fullPath
+                }
+                if ($null -ne $controller_number) {
+
+                    $addParams.ControllerNumber = $controller_number
+
+                }
+                if ($null -ne $controller_location) {
+
+                    $addParams.ControllerLocation = $controller_location
+
+                }
+
+                $existingDrive = Add-VMHardDiskDrive @addParams -Passthru
+            }
+
+            Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $existingDrive -ModuleResult $module.Result
+        }
+        "absent" {
+            if (-not $existingDrive) {
+                $module.Result.changed = $false
+                $module.ExitJson()
+            }
+
             $module.Result.changed = $true
             if ($module.CheckMode) {
-                if ($null -ne $controller_type) { $module.Result.controller_type = $controller_type }
-                if ($null -ne $controller_number) { $module.Result.controller_number = $controller_number }
-                if ($null -ne $controller_location) { $module.Result.controller_location = $controller_location }
                 $module.ExitJson()
             }
 
             Remove-VMHardDiskDrive -VMHardDiskDrive $existingDrive | Out-Null
         }
-        else {
-            $module.Result.changed = $true
-            if ($module.CheckMode) {
-                if ($null -ne $controller_type) { $module.Result.controller_type = $controller_type }
-                if ($null -ne $controller_number) { $module.Result.controller_number = $controller_number }
-                if ($null -ne $controller_location) { $module.Result.controller_location = $controller_location }
-                $module.ExitJson()
-            }
-        }
-
-        # Add the drive
-        $addParams = @{
-            VMName = $vm_name
-            Path = $path
-        }
-        if ($null -ne $controller_type) { $addParams.ControllerType = $controller_type }
-        if ($null -ne $controller_number) { $addParams.ControllerNumber = $controller_number }
-        if ($null -ne $controller_location) { $addParams.ControllerLocation = $controller_location }
-
-        Add-VMHardDiskDrive @addParams | Out-Null
-
-        # Refresh result
-        $drives = Get-VMHardDiskDrive -VMName $vm_name
-        foreach ($drive in $drives) {
-            if ($drive.Path -eq $fullPath -or $drive.Path -eq $path) {
-                $module.Result.controller_type = $drive.ControllerType.ToString()
-                $module.Result.controller_number = $drive.ControllerNumber
-                $module.Result.controller_location = $drive.ControllerLocation
-                break
-            }
-        }
-    }
-    elseif ($state -eq "absent") {
-        if (-not $existingDrive) {
-            $module.ExitJson()
-        }
-
-        $module.Result.changed = $true
-        if ($module.CheckMode) {
-            $module.ExitJson()
-        }
-
-        Remove-VMHardDiskDrive -VMHardDiskDrive $existingDrive | Out-Null
     }
 
     $module.ExitJson()

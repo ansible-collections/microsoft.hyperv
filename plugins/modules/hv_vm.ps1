@@ -21,67 +21,61 @@ $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
 $name = $module.Params.name
 $state = $module.Params.state
-$generation = $module.Params.generation
-$memory_startup_bytes = $module.Params.memory_startup_bytes
 
-if ($null -ne $memory_startup_bytes) {
-    $memory_startup_bytes = Convert-ToByte -SizeString $memory_startup_bytes
+if ($null -ne $module.Params.memory_startup_bytes) {
+    $module.Params.memory_startup_bytes = Convert-ToByte -SizeString $module.Params.memory_startup_bytes
 }
 
-$boot_device = $module.Params.boot_device
-
 $module.Result.name = $name
-$module.Result.state = ""
+
+# Mapping for New-VM parameters
+$vmCreateMap = @(
+    @{ Param = "generation"; Property = "Generation" }
+    @{ Param = "memory_startup_bytes"; Property = "MemoryStartupBytes" }
+    @{ Param = "boot_device"; Property = "BootDevice" }
+)
 
 try {
     $vm = Get-VM -Name $name -ErrorAction SilentlyContinue
 
-    if ($state -eq "present") {
-        if ($vm) {
+    switch ($state) {
+        "present" {
+            if ($vm) {
+                $module.Result.state = "present"
+                $module.ExitJson()
+            }
+
+            $module.Result.changed = $true
             $module.Result.state = "present"
-            $module.ExitJson()
+
+            if ($module.CheckMode) {
+                $module.ExitJson()
+            }
+
+            $cmdParams = @{ Name = $name }
+            $cmdParams += Get-HyperVParametersFromMap -PropertyMap $vmCreateMap -AnsibleParams $module.Params
+
+            New-VM @cmdParams | Out-Null
         }
+        "absent" {
+            if (-not $vm) {
+                $module.Result.state = "absent"
+                $module.ExitJson()
+            }
 
-        $module.Result.changed = $true
-        $module.Result.state = "present"
-
-        if ($module.CheckMode) {
-            $module.ExitJson()
-        }
-
-        $cmdParams = @{
-            Name = $name
-            Generation = $generation
-        }
-
-        if ($null -ne $memory_startup_bytes) {
-            $cmdParams.MemoryStartupBytes = $memory_startup_bytes
-        }
-
-        if ($null -ne $boot_device) {
-            $cmdParams.BootDevice = $boot_device
-        }
-
-        New-VM @cmdParams | Out-Null
-    }
-    elseif ($state -eq "absent") {
-        if (-not $vm) {
+            $module.Result.changed = $true
             $module.Result.state = "absent"
-            $module.ExitJson()
+
+            if ($module.CheckMode) {
+                $module.ExitJson()
+            }
+
+            if ($vm.State -eq 'Running') {
+                Stop-VM -Name $name -TurnOff -Force
+            }
+
+            Remove-VM -Name $name -Force
         }
-
-        $module.Result.changed = $true
-        $module.Result.state = "absent"
-
-        if ($module.CheckMode) {
-            $module.ExitJson()
-        }
-
-        if ($vm.State -eq 'Running') {
-            Stop-VM -Name $name -TurnOff -Force
-        }
-
-        Remove-VM -Name $name -Force
     }
 
     $module.ExitJson()

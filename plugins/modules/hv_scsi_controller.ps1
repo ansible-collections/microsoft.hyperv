@@ -4,6 +4,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
+#AnsibleRequires -PowerShell ansible_collections.microsoft.hyperv.plugins.module_utils.HyperV
 
 $spec = @{
     options = @{
@@ -26,31 +27,31 @@ if ($count -lt 0 -or $count -gt 4) {
     $module.FailJson("Invalid count: $count. Hyper-V VMs support a maximum of 4 SCSI controllers (0-4).")
 }
 
+$propertyMap = @(
+    @{ Param = "id"; Property = "Id"; Type = "string" }
+    @{ Param = "controller_number"; Property = "ControllerNumber"; Type = "int" }
+)
+
 try {
     $vm = Get-VM -Name $vm_name -ErrorAction SilentlyContinue
-
     if (-not $vm) {
         $module.FailJson("Virtual Machine '$vm_name' not found.")
     }
 
-    $currentControllers = Get-VMScsiController -VMName $vm_name -ErrorAction SilentlyContinue
-    $currentCount = if ($currentControllers) { @($currentControllers).Count } else { 0 }
+    $currentControllers = @(Get-VMScsiController -VMName $vm_name -ErrorAction SilentlyContinue)
+    $currentCount = $currentControllers.Count
 
     if ($currentCount -eq $count) {
         # Nothing to do, just map existing controllers to result
-        if ($currentControllers) {
-            foreach ($ctrl in @($currentControllers)) {
-                $module.Result.controllers += @{
-                    id = $ctrl.Id.ToString()
-                    controller_number = $ctrl.ControllerNumber
-                }
-            }
+        foreach ($ctrl in $currentControllers) {
+            $ctrlDict = @{}
+            Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $ctrl -ModuleResult $ctrlDict
+            $module.Result.controllers += $ctrlDict
         }
         $module.ExitJson()
     }
 
     $module.Result.changed = $true
-
     if ($module.CheckMode) {
         $module.ExitJson()
     }
@@ -65,7 +66,7 @@ try {
     elseif ($currentCount -gt $count) {
         # Remove controllers from highest number down
         $difference = $currentCount - $count
-        $sortedControllers = @($currentControllers) | Sort-Object -Property ControllerNumber -Descending
+        $sortedControllers = $currentControllers | Sort-Object -Property ControllerNumber -Descending
 
         for ($i = 0; $i -lt $difference; $i++) {
             $ctrlToRemove = $sortedControllers[$i]
@@ -74,14 +75,11 @@ try {
     }
 
     # Refresh controllers to build return object
-    $finalControllers = Get-VMScsiController -VMName $vm_name -ErrorAction SilentlyContinue
-    if ($finalControllers) {
-        foreach ($ctrl in @($finalControllers)) {
-            $module.Result.controllers += @{
-                id = $ctrl.Id.ToString()
-                controller_number = $ctrl.ControllerNumber
-            }
-        }
+    $finalControllers = @(Get-VMScsiController -VMName $vm_name -ErrorAction SilentlyContinue)
+    foreach ($ctrl in $finalControllers) {
+        $ctrlDict = @{}
+        Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $ctrl -ModuleResult $ctrlDict
+        $module.Result.controllers += $ctrlDict
     }
 
     $module.ExitJson()

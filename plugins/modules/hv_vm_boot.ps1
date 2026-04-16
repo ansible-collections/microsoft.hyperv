@@ -4,6 +4,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
+#AnsibleRequires -PowerShell ansible_collections.microsoft.hyperv.plugins.module_utils.HyperV
 
 $spec = @{
     options = @{
@@ -19,16 +20,16 @@ $spec = @{
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
 $name = $module.Params.name
-$secure_boot = $module.Params.secure_boot
-$secure_boot_template = $module.Params.secure_boot_template
-$num_lock = $module.Params.num_lock
-$startup_order = $module.Params.startup_order
 
 $module.Result.name = $name
 
+# Property Maps
+$gen1Map = @(
+    @{ Param = "num_lock"; Property = "NumLockEnabled"; Type = "bool" }
+)
+
 try {
     $vm = Get-VM -Name $name -ErrorAction SilentlyContinue
-
     if (-not $vm) {
         $module.FailJson("Virtual Machine '$name' not found.")
     }
@@ -38,110 +39,114 @@ try {
     $changed = $false
 
     if ($gen -eq 1) {
-        if ($null -ne $secure_boot -or $null -ne $secure_boot_template) {
+        if ($null -ne $module.Params.secure_boot -or $null -ne $module.Params.secure_boot_template) {
             $module.FailJson("secure_boot and secure_boot_template are only supported on Generation 2 Virtual Machines.")
         }
 
         $bios = Get-VMBios -VMName $name
 
-        # NumLock
-        if ($null -ne $num_lock) {
-            $currentNumLock = [bool]$bios.NumLockEnabled
-            if ($currentNumLock -ne $num_lock) {
-                if (-not $module.CheckMode) {
-                    if ($num_lock) {
-                        Set-VMBios -VMName $name -EnableNumLock
-                    }
-                    else {
-                        Set-VMBios -VMName $name -DisableNumLock
-                    }
-                }
-                $changed = $true
-            }
-        }
+        # Standard change detection for Gen1
+        $changed = Test-HyperVPropertiesChanged -PropertyMap $gen1Map -CurrentObject $bios -AnsibleParams $module.Params
 
-        # StartupOrder
-        if ($null -ne $startup_order) {
+        # StartupOrder (Special list handling)
+        if ($null -ne $module.Params.startup_order) {
             $currentOrder = @($bios.StartupOrder | ForEach-Object { $_.ToString() })
-            $reqOrder = @($startup_order)
-
+            $reqOrder = @($module.Params.startup_order)
             foreach ($item in $currentOrder) {
                 if ($reqOrder -notcontains $item) {
+
                     $reqOrder += $item
+
                 }
             }
-
             if (($currentOrder -join ",") -ne ($reqOrder -join ",")) {
-                if (-not $module.CheckMode) {
-                    Set-VMBios -VMName $name -StartupOrder $reqOrder
-                }
+
                 $changed = $true
+
             }
         }
 
-        $bios = Get-VMBios -VMName $name
-        $module.Result.num_lock = [bool]$bios.NumLockEnabled
+        $module.Result.changed = $changed
+
+        if ($changed -and -not $module.CheckMode) {
+            if ($null -ne $module.Params.num_lock) {
+                if ($module.Params.num_lock) {
+                    Set-VMBios -VMName $name -EnableNumLock
+                }
+                else {
+                    Set-VMBios -VMName $name -DisableNumLock
+                }
+            }
+            if ($null -ne $module.Params.startup_order) {
+                Set-VMBios -VMName $name -StartupOrder $reqOrder
+            }
+            $bios = Get-VMBios -VMName $name
+        }
+
+        Set-HyperVResultFromMap -PropertyMap $gen1Map -CurrentObject $bios -ModuleResult $module.Result
         $module.Result.startup_order = @($bios.StartupOrder | ForEach-Object { $_.ToString() })
 
-        if ($module.CheckMode) {
-            if ($null -ne $num_lock) {
-                $module.Result.num_lock = $num_lock
+        if ($module.CheckMode -and $changed) {
+            if ($null -ne $module.Params.num_lock) {
+                $module.Result.num_lock = $module.Params.num_lock
             }
-            if ($null -ne $startup_order) {
+            if ($null -ne $module.Params.startup_order) {
                 $module.Result.startup_order = $reqOrder
             }
         }
     }
     else {
         # Generation 2
-        if ($null -ne $num_lock -or $null -ne $startup_order) {
+        if ($null -ne $module.Params.num_lock -or $null -ne $module.Params.startup_order) {
             $module.FailJson("num_lock and startup_order are only supported on Generation 1 Virtual Machines.")
         }
 
         $fw = Get-VMFirmware -VMName $name
 
-        # Secure Boot
-        if ($null -ne $secure_boot) {
-            $currentSecureBoot = ($fw.SecureBoot.ToString() -eq "On")
-            if ($currentSecureBoot -ne $secure_boot) {
-                if (-not $module.CheckMode) {
-                    if ($secure_boot) {
-                        Set-VMFirmware -VMName $name -EnableSecureBoot On
-                    }
-                    else {
-                        Set-VMFirmware -VMName $name -EnableSecureBoot Off
-                    }
-                }
+        # Custom change detection for Gen2 because SecureBoot is an Enum string (On/Off)
+        if ($null -ne $module.Params.secure_boot) {
+            $curSB = ($fw.SecureBoot.ToString() -eq "On")
+            if ($curSB -ne $module.Params.secure_boot) {
+
                 $changed = $true
+
             }
         }
-
-        # Secure Boot Template
-        if ($null -ne $secure_boot_template) {
-            $currentTemplate = $fw.SecureBootTemplate
-            if ($currentTemplate -ne $secure_boot_template) {
-                if (-not $module.CheckMode) {
-                    Set-VMFirmware -VMName $name -SecureBootTemplate $secure_boot_template
-                }
-                $changed = $true
-            }
+        if ($null -ne $module.Params.secure_boot_template -and $fw.SecureBootTemplate -ne $module.Params.secure_boot_template) {
+            $changed = $true
         }
 
-        $fw = Get-VMFirmware -VMName $name
+        $module.Result.changed = $changed
+
+        if ($changed -and -not $module.CheckMode) {
+            $fwParams = @{ VMName = $name }
+            if ($null -ne $module.Params.secure_boot) {
+                $fwParams.EnableSecureBoot = if ($module.Params.secure_boot) {
+                    "On"
+                }
+                else {
+                    "Off"
+                }
+            }
+            if ($null -ne $module.Params.secure_boot_template) {
+                $fwParams.SecureBootTemplate = $module.Params.secure_boot_template
+            }
+            Set-VMFirmware @fwParams | Out-Null
+            $fw = Get-VMFirmware -VMName $name
+        }
+
         $module.Result.secure_boot = ($fw.SecureBoot.ToString() -eq "On")
         $module.Result.secure_boot_template = $fw.SecureBootTemplate
 
-        if ($module.CheckMode) {
-            if ($null -ne $secure_boot) {
-                $module.Result.secure_boot = $secure_boot
+        if ($module.CheckMode -and $changed) {
+            if ($null -ne $module.Params.secure_boot) {
+                $module.Result.secure_boot = $module.Params.secure_boot
             }
-            if ($null -ne $secure_boot_template) {
-                $module.Result.secure_boot_template = $secure_boot_template
+            if ($null -ne $module.Params.secure_boot_template) {
+                $module.Result.secure_boot_template = $module.Params.secure_boot_template
             }
         }
     }
-
-    $module.Result.changed = $changed
 
     $module.ExitJson()
 }

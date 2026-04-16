@@ -4,6 +4,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
+#AnsibleRequires -PowerShell ansible_collections.microsoft.hyperv.plugins.module_utils.HyperV
 
 $spec = @{
     options = @{
@@ -25,7 +26,6 @@ $module.Result.state = ""
 
 try {
     $vm = Get-VM -Name $name -ErrorAction SilentlyContinue
-
     if (-not $vm) {
         $module.FailJson("Virtual Machine '$name' not found.")
     }
@@ -49,46 +49,47 @@ try {
 
     $module.Result.changed = $true
 
-    if ($state -ne 'restarted') {
-        $module.Result.state = $targetHvState
-    }
-    else {
-        $module.Result.state = 'Running'
-    }
-
     if ($module.CheckMode) {
+        $module.Result.state = if ($state -eq 'restarted') {
+            'Running'
+        }
+        else {
+            $targetHvState
+        }
         $module.ExitJson()
     }
 
-    if ($state -eq 'running') {
-        if ($currentState -eq 'Paused') {
-            Resume-VM -Name $name
+    switch ($state) {
+        'running' {
+            if ($currentState -eq 'Paused') {
+                Resume-VM -Name $name
+            }
+            else {
+                Start-VM -Name $name
+            }
         }
-        else {
-            Start-VM -Name $name
+        'stopped' {
+            if ($force) {
+                Stop-VM -Name $name -TurnOff
+            }
+            else {
+                Stop-VM -Name $name
+            }
         }
-    }
-    elseif ($state -eq 'stopped') {
-        if ($force) {
-            Stop-VM -Name $name -TurnOff
+        'restarted' {
+            if ($force) {
+                Restart-VM -Name $name -Force
+            }
+            else {
+                Restart-VM -Name $name
+            }
         }
-        else {
-            Stop-VM -Name $name
+        'paused' {
+            Suspend-VM -Name $name
         }
-    }
-    elseif ($state -eq 'restarted') {
-        if ($force) {
-            Restart-VM -Name $name -Force
+        'saved' {
+            Save-VM -Name $name
         }
-        else {
-            Restart-VM -Name $name
-        }
-    }
-    elseif ($state -eq 'paused') {
-        Suspend-VM -Name $name
-    }
-    elseif ($state -eq 'saved') {
-        Save-VM -Name $name
     }
 
     $newVm = Get-VM -Name $name

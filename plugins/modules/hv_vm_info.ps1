@@ -4,6 +4,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
+#AnsibleRequires -PowerShell ansible_collections.microsoft.hyperv.plugins.module_utils.HyperV
 
 $spec = @{
     options = @{
@@ -15,8 +16,18 @@ $spec = @{
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
 $name = $module.Params.name
-
 $module.Result.vms = @()
+
+$propertyMap = @(
+    @{ Param = "name"; Property = "Name"; Type = "string" }
+    @{ Param = "state"; Property = "State"; Type = "enum" }
+    @{ Param = "status"; Property = "Status"; Type = "enum" }
+    @{ Param = "generation"; Property = "Generation"; Type = "int" }
+    @{ Param = "MemoryStartup"; Property = "MemoryStartup"; Type = "long" }
+    @{ Param = "ProcessorCount"; Property = "ProcessorCount"; Type = "int" }
+    @{ Param = "ConfigurationLocation"; Property = "ConfigurationLocation"; Type = "string" }
+    @{ Param = "Path"; Property = "Path"; Type = "string" }
+)
 
 try {
     if ($name) {
@@ -32,18 +43,13 @@ try {
 
     $vmlist = @()
     foreach ($vm in @($vms)) {
-        $vmDict = @{
-            name = $vm.Name
-            state = $vm.State.ToString()
-            status = $vm.Status.ToString()
-            uptime_seconds = [math]::Round($vm.Uptime.TotalSeconds)
-            id = $vm.Id.ToString()
-            generation = $vm.Generation
-            MemoryStartup = $vm.MemoryStartup
-            ProcessorCount = $vm.ProcessorCount
-            ConfigurationLocation = $vm.ConfigurationLocation
-            Path = $vm.Path
-        }
+        $vmDict = @{}
+        Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $vm -ModuleResult $vmDict
+
+        # Add special fields
+        $vmDict.id = $vm.Id.ToString()
+        $vmDict.uptime_seconds = [math]::Round($vm.Uptime.TotalSeconds)
+
         $vmlist += $vmDict
     }
 

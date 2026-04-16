@@ -4,6 +4,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
+#AnsibleRequires -PowerShell ansible_collections.microsoft.hyperv.plugins.module_utils.HyperV
 
 $spec = @{
     options = @{
@@ -17,10 +18,13 @@ $spec = @{
 
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
-$virtual_machine_path = $module.Params.virtual_machine_path
-$virtual_hard_disk_path = $module.Params.virtual_hard_disk_path
-$numa_spanning_enabled = $module.Params.numa_spanning_enabled
-$enable_enhanced_session_mode = $module.Params.enable_enhanced_session_mode
+# Define the mapping between Ansible params and Hyper-V properties
+$propertyMap = @(
+    @{ Param = "virtual_machine_path"; Property = "VirtualMachinePath"; Type = "string" }
+    @{ Param = "virtual_hard_disk_path"; Property = "VirtualHardDiskPath"; Type = "string" }
+    @{ Param = "numa_spanning_enabled"; Property = "NumaSpanningEnabled"; Type = "bool" }
+    @{ Param = "enable_enhanced_session_mode"; Property = "EnableEnhancedSessionMode"; Type = "bool" }
+)
 
 try {
     $hostConfig = Get-VMHost -ErrorAction SilentlyContinue
@@ -29,74 +33,28 @@ try {
         $module.FailJson("Failed to retrieve Hyper-V host configuration.")
     }
 
-    $changed = $false
-    $cmdParams = @{}
-
-    # Virtual Machine Path
-    if ($null -ne $virtual_machine_path) {
-        $currentVmPath = $hostConfig.VirtualMachinePath.TrimEnd("\")
-        $requestedVmPath = $virtual_machine_path.TrimEnd("\")
-
-        if ($currentVmPath -ne $requestedVmPath) {
-            $cmdParams.VirtualMachinePath = $virtual_machine_path
-            $changed = $true
-        }
-    }
-
-    # Virtual Hard Disk Path
-    if ($null -ne $virtual_hard_disk_path) {
-        $currentVhdPath = $hostConfig.VirtualHardDiskPath.TrimEnd("\")
-        $requestedVhdPath = $virtual_hard_disk_path.TrimEnd("\")
-
-        if ($currentVhdPath -ne $requestedVhdPath) {
-            $cmdParams.VirtualHardDiskPath = $virtual_hard_disk_path
-            $changed = $true
-        }
-    }
-
-    # NUMA Spanning
-    if ($null -ne $numa_spanning_enabled) {
-        $currentNuma = [bool]$hostConfig.NumaSpanningEnabled
-        if ($currentNuma -ne $numa_spanning_enabled) {
-            $cmdParams.NumaSpanningEnabled = $numa_spanning_enabled
-            $changed = $true
-        }
-    }
-
-    # Enhanced Session Mode
-    if ($null -ne $enable_enhanced_session_mode) {
-        $currentEsm = [bool]$hostConfig.EnableEnhancedSessionMode
-        if ($currentEsm -ne $enable_enhanced_session_mode) {
-            $cmdParams.EnableEnhancedSessionMode = $enable_enhanced_session_mode
-            $changed = $true
-        }
-    }
-
-    if ($changed) {
-        if (-not $module.CheckMode) {
-            Set-VMHost @cmdParams | Out-Null
-            $hostConfig = Get-VMHost -ErrorAction SilentlyContinue
-        }
-    }
-
+    $changed = Test-HyperVPropertiesChanged -PropertyMap $propertyMap -CurrentObject $hostConfig -AnsibleParams $module.Params
     $module.Result.changed = $changed
 
-    $propertyMap = @(
-        @{ Name = 'virtual_machine_path'; Current = $hostConfig.VirtualMachinePath; Desired = $virtual_machine_path }
-        @{ Name = 'virtual_hard_disk_path'; Current = $hostConfig.VirtualHardDiskPath; Desired = $virtual_hard_disk_path }
-        @{ Name = 'numa_spanning_enabled'; Current = [bool]$hostConfig.NumaSpanningEnabled; Desired = $numa_spanning_enabled }
-        @{ Name = 'enable_enhanced_session_mode'; Current = [bool]$hostConfig.EnableEnhancedSessionMode; Desired = $enable_enhanced_session_mode }
-    )
-
-    foreach ($prop in $propertyMap) {
-        # Set the baseline current state
-        $module.Result.($prop.Name) = $prop.Current
-
-        # Override with the desired state if in Check Mode, a change will happen, and a value was provided
-        if ($module.CheckMode -and $changed -and $null -ne $prop.Desired) {
-            $module.Result.($prop.Name) = $prop.Desired
+    if ($changed) {
+        if ($module.CheckMode) {
+            Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $hostConfig -ModuleResult $module.Result
+            # Override with desired state for check mode
+            foreach ($map in $propertyMap) {
+                $paramValue = $module.Params.($map.Param)
+                if ($null -ne $paramValue) {
+                    $module.Result.($map.Param) = $paramValue
+                }
+            }
+            $module.ExitJson()
         }
+
+        $cmdParams = Get-HyperVParametersFromMap -PropertyMap $propertyMap -AnsibleParams $module.Params
+        Set-VMHost @cmdParams | Out-Null
+        $hostConfig = Get-VMHost -ErrorAction SilentlyContinue
     }
+
+    Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $hostConfig -ModuleResult $module.Result
 
     $module.ExitJson()
 }

@@ -41,25 +41,62 @@ $dynamic_mac_address = $module.Params.dynamic_mac_address
 $mac_address_spoofing = $module.Params.mac_address_spoofing
 $maximum_bandwidth = $module.Params.maximum_bandwidth
 $minimum_bandwidth_absolute = $module.Params.minimum_bandwidth_absolute
-$minimum_bandwidth_weight = $module.Params.minimum_bandwidth_weight
 
 # QoS conversion function (bps/Mbps/Gbps)
 Function Convert-ToBandwidth {
     param($val)
-    if ($val -isnot [string]) { return [long]$val }
+    if ($val -isnot [string]) {
+
+        return [long]$val
+
+    }
     $str = $val.ToUpper().Trim()
-    if ($str.EndsWith("GBPS")) { return [long]$str.Replace("GBPS", "") * 1GB }
-    if ($str.EndsWith("MBPS")) { return [long]$str.Replace("MBPS", "") * 1MB }
-    if ($str.EndsWith("KBPS")) { return [long]$str.Replace("KBPS", "") * 1KB }
-    if ($str.EndsWith("BPS")) { return [long]$str.Replace("BPS", "") }
+    if ($str.EndsWith("GBPS")) {
+
+        return [long]$str.Replace("GBPS", "") * 1GB
+
+    }
+    if ($str.EndsWith("MBPS")) {
+
+        return [long]$str.Replace("MBPS", "") * 1MB
+
+    }
+    if ($str.EndsWith("KBPS")) {
+
+        return [long]$str.Replace("KBPS", "") * 1KB
+
+    }
+    if ($str.EndsWith("BPS")) {
+
+        return [long]$str.Replace("BPS", "")
+
+    }
     return [long]$str
 }
 
-if ($null -ne $maximum_bandwidth) { $maximum_bandwidth = Convert-ToBandwidth $maximum_bandwidth }
-if ($null -ne $minimum_bandwidth_absolute) { $minimum_bandwidth_absolute = Convert-ToBandwidth $minimum_bandwidth_absolute }
+if ($null -ne $maximum_bandwidth) {
+    $maximum_bandwidth = Convert-ToBandwidth $maximum_bandwidth
+    $module.Params.maximum_bandwidth = $maximum_bandwidth
+}
+if ($null -ne $minimum_bandwidth_absolute) {
+    $minimum_bandwidth_absolute = Convert-ToBandwidth $minimum_bandwidth_absolute
+    $module.Params.minimum_bandwidth_absolute = $minimum_bandwidth_absolute
+}
 
 $module.Result.vm_name = $vm_name
 $module.Result.name = $name
+
+# Property Maps
+$adapterPropertyMap = @(
+    @{ Param = "switch_name"; Property = "SwitchName"; Type = "string" }
+    @{ Param = "dynamic_mac_address"; Property = "DynamicMacAddressEnabled"; Type = "bool" }
+)
+
+$bandwidthPropertyMap = @(
+    @{ Param = "maximum_bandwidth"; Property = "MaximumBandwidth"; Type = "long" }
+    @{ Param = "minimum_bandwidth_absolute"; Property = "MinimumBandwidthAbsolute"; Type = "long" }
+    @{ Param = "minimum_bandwidth_weight"; Property = "MinimumBandwidthWeight"; Type = "int" }
+)
 
 try {
     $vm = Get-VM -Name $vm_name -ErrorAction SilentlyContinue
@@ -78,39 +115,68 @@ try {
                 $changed = $true
             }
             else {
-                # Check for changes in existing adapter
-                if ($null -ne $switch_name -and $adapter.SwitchName -ne $switch_name) { $changed = $true }
+                # Adapter changes
+                if (Test-HyperVPropertiesChanged -PropertyMap $adapterPropertyMap -CurrentObject $adapter -AnsibleParams $module.Params) {
 
+                    $changed = $true
+
+                }
+
+                # Mac handling (Special case because MacAddress is returned without separators)
                 if ($null -ne $mac_address) {
                     $cleanMac = $mac_address.Replace(":", "").Replace("-", "").Replace(".", "")
-                    if ($adapter.MacAddress -ne $cleanMac) { $changed = $true }
+                    if ($adapter.MacAddress -ne $cleanMac) {
+
+                        $changed = $true
+
+                    }
                 }
-                if ($null -ne $dynamic_mac_address -and [bool]$adapter.DynamicMacAddressEnabled -ne $dynamic_mac_address) {
-                    $changed = $true
-                }
+
+                # Spoofing handling
                 if ($null -ne $mac_address_spoofing) {
                     $currentSpoof = ($adapter.MacAddressSpoofing.ToString() -eq "On")
-                    if ($currentSpoof -ne $mac_address_spoofing) { $changed = $true }
+                    if ($currentSpoof -ne $mac_address_spoofing) {
+
+                        $changed = $true
+
+                    }
                 }
-
-                # Bandwidth Settings
-                $bw = $adapter.BandwidthSetting
-                if ($null -ne $maximum_bandwidth -and $bw.MaximumBandwidth -ne $maximum_bandwidth) { $changed = $true }
-                if ($null -ne $minimum_bandwidth_absolute -and $bw.MinimumBandwidthAbsolute -ne $minimum_bandwidth_absolute) { $changed = $true }
-                if ($null -ne $minimum_bandwidth_weight -and $bw.MinimumBandwidthWeight -ne $minimum_bandwidth_weight) { $changed = $true }
-
-                # Check VLAN changes
-                $vs = $adapter.VlanSetting
+                # Bandwidth changes
+                if ($null -ne $adapter.BandwidthSetting) {
+                    $bws = $adapter.BandwidthSetting
+                    if (Test-HyperVPropertiesChanged -PropertyMap $bandwidthPropertyMap -CurrentObject $bws -AnsibleParams $module.Params) {
+                        $changed = $true
+                    }
+                }
+                # VLAN changes
                 if ($null -ne $vlan_mode) {
-                    if ($vs.OperationMode.ToString() -ne $vlan_mode) { $changed = $true }
-                    if ($vlan_mode -eq "Access" -and $vs.AccessVlanId -ne $vlan_id) { $changed = $true }
+                    $vs = $adapter.VlanSetting
+                    if ($vs.OperationMode.ToString() -ne $vlan_mode) {
+
+                        $changed = $true
+
+                    }
+                    if ($vlan_mode -eq "Access" -and $vs.AccessVlanId -ne $vlan_id) {
+
+                        $changed = $true
+
+                    }
                     if ($vlan_mode -eq "Trunk") {
-                        if ($vs.NativeVlanId -ne $native_vlan_id) { $changed = $true }
-                        # Compare VLAN lists
-                        $currentList = @()
-                        if ($vs.AllowedVlanIdList) { $currentList = @($vs.AllowedVlanIdList | Sort-Object) }
-                        $desiredList = @($allowed_vlan_id_list | Sort-Object)
-                        if (($currentList -join ",") -ne ($desiredList -join ",")) { $changed = $true }
+                        if ($vs.NativeVlanId -ne $native_vlan_id) {
+
+                            $changed = $true
+
+                        }
+                        $currList = if ($vs.AllowedVlanIdList) {
+                            @($vs.AllowedVlanIdList | Sort-Object)
+                        }
+                        else { @() }
+                        $desList = @($allowed_vlan_id_list | Sort-Object)
+                        if (($currList -join ",") -ne ($desList -join ",")) {
+
+                            $changed = $true
+
+                        }
                     }
                 }
             }
@@ -118,55 +184,99 @@ try {
             $module.Result.changed = $changed
 
             if ($module.CheckMode) {
-                if ($null -ne $switch_name) { $module.Result.switch_name = $switch_name }
-                if ($null -ne $mac_address) { $module.Result.mac_address = $mac_address.Replace(":", "").Replace("-", "").Replace(".", "") }
+                if ($null -ne $switch_name) {
+
+                    $module.Result.switch_name = $switch_name
+
+                }
+                if ($null -ne $mac_address) {
+
+                    $module.Result.mac_address = $mac_address.Replace(":", "").Replace("-", "").Replace(".", "")
+
+                }
                 $module.ExitJson()
             }
 
             if ($changed) {
                 if ($addRequired) {
                     $addParams = @{ VMName = $vm_name; Name = $name }
-                    if ($null -ne $switch_name) { $addParams.SwitchName = $switch_name }
-                    if ($null -ne $mac_address) { $addParams.StaticMacAddress = $mac_address }
-                    if ($null -ne $dynamic_mac_address -and $dynamic_mac_address) { $addParams.DynamicMacAddress = $true }
+                    if ($null -ne $switch_name) {
+
+                        $addParams.SwitchName = $switch_name
+
+                    }
+                    if ($null -ne $mac_address) {
+
+                        $addParams.StaticMacAddress = $mac_address
+
+                    }
+                    if ($null -ne $dynamic_mac_address -and $dynamic_mac_address) {
+
+                        $addParams.DynamicMacAddress = $true
+
+                    }
 
                     $adapter = Add-VMNetworkAdapter @addParams -Passthru
                 }
 
-                # Apply Set-VMNetworkAdapter properties
+                # Set-VMNetworkAdapter properties
                 $setParams = @{ VMNetworkAdapter = $adapter }
-                if ($null -ne $mac_address) { $setParams.StaticMacAddress = $mac_address }
+                if ($null -ne $mac_address) {
+
+                    $setParams.StaticMacAddress = $mac_address
+
+                }
                 if ($null -ne $dynamic_mac_address) {
-                    if ($dynamic_mac_address) { $setParams.DynamicMacAddress = $true }
-                    else { $setParams.StaticMacAddress = $adapter.MacAddress }
+                    if ($dynamic_mac_address) {
+                        $setParams.DynamicMacAddress = $true
+                    }
+                    else {
+                        $setParams.StaticMacAddress = $adapter.MacAddress
+                    }
                 }
                 if ($null -ne $mac_address_spoofing) {
-                    if ($mac_address_spoofing) { $setParams.MacAddressSpoofing = "On" }
-                    else { $setParams.MacAddressSpoofing = "Off" }
-                }
-                if ($null -ne $maximum_bandwidth) { $setParams.MaximumBandwidth = $maximum_bandwidth }
-                if ($null -ne $minimum_bandwidth_absolute) { $setParams.MinimumBandwidthAbsolute = $minimum_bandwidth_absolute }
-                if ($null -ne $minimum_bandwidth_weight) { $setParams.MinimumBandwidthWeight = $minimum_bandwidth_weight }
-
-                if ($setParams.Count -gt 1) { Set-VMNetworkAdapter @setParams }
-
-                # Handle Switch connection separately
-                if ($null -ne $switch_name) {
-                    if ($adapter.SwitchName -ne $switch_name) {
-                        Connect-VMNetworkAdapter -VMNetworkAdapter $adapter -SwitchName $switch_name
+                    if ($mac_address_spoofing) {
+                        $setParams.MacAddressSpoofing = "On"
                     }
+                    else {
+                        $setParams.MacAddressSpoofing = "Off"
+                    }
+                }
+
+                # Bandwidth params using utility
+                $setParams += Get-HyperVParametersFromMap -PropertyMap $bandwidthPropertyMap -AnsibleParams $module.Params
+
+                if ($setParams.Count -gt 1) {
+
+
+                    Set-VMNetworkAdapter @setParams
+
+
+                }
+
+                # Handle Switch connection
+                if ($null -ne $switch_name -and $adapter.SwitchName -ne $switch_name) {
+                    Connect-VMNetworkAdapter -VMNetworkAdapter $adapter -SwitchName $switch_name
                 }
 
                 # Apply VLAN settings
                 if ($null -ne $vlan_mode) {
                     $vlanSetParams = @{ VMNetworkAdapter = $adapter }
-                    if ($vlan_mode -eq "Access") { $vlanSetParams.Access = $true; $vlanSetParams.VlanId = $vlan_id }
+                    if ($vlan_mode -eq "Access") {
+
+                        $vlanSetParams.Access = $true; $vlanSetParams.VlanId = $vlan_id
+
+                    }
                     elseif ($vlan_mode -eq "Trunk") {
                         $vlanSetParams.Trunk = $true
                         $vlanSetParams.NativeVlanId = $native_vlan_id
                         $vlanSetParams.AllowedVlanIdList = $allowed_vlan_id_list
                     }
-                    elseif ($vlan_mode -eq "Untagged") { $vlanSetParams.Untagged = $true }
+                    if ($vlan_mode -eq "Untagged") {
+
+                        $vlanSetParams.Untagged = $true
+
+                    }
 
                     Set-VMNetworkAdapterVlan @vlanSetParams
                 }

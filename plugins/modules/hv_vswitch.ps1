@@ -45,6 +45,7 @@ $module.Result.state = $state
 
 # Define the mapping between Ansible params and Hyper-V properties
 $propertyMap = @(
+    @{ Param = "switch_type"; Property = "SwitchType"; Type = "enum" }
     @{ Param = "notes"; Property = "Notes"; Type = "string" }
     @{ Param = "allow_management_os"; Property = "AllowManagementOS"; Type = "bool"; SwitchType = "External" }
     @{ Param = "minimum_bandwidth_mode"; Property = "MinimumBandwidthMode"; Type = "enum" }
@@ -75,44 +76,23 @@ try {
     $creation_required = ($null -eq $vswitch)
 
     if ($creation_required) {
+        if ($null -eq $switch_type) {
+            $module.FailJson("Parameter 'switch_type' is required when creating a new virtual switch.")
+        }
         $changed = $true
     }
     else {
-        if ($null -ne $switch_type -and $vswitch.SwitchType.ToString().ToLower() -ne $switch_type.ToLower()) {
-            $module.FailJson("Cannot change the switch_type of an existing virtual switch. Current type: $($vswitch.SwitchType)")
+        $vType = $vswitch.SwitchType.ToString().ToLower()
+        if ($null -ne $switch_type -and
+            $vType -ne $switch_type.ToLower()) {
+            $msg = "Cannot change switch_type. Current: $($vswitch.SwitchType)"
+            $module.FailJson($msg)
         }
 
-        # Check for changes using propertyMap
-        foreach ($map in $propertyMap) {
-            $paramValue = $module.Params.($map.Param)
-            if ($null -eq $paramValue) { continue }
+        $changed = Test-HyperVPropertiesChanged -PropertyMap $propertyMap -CurrentObject $vswitch `
+            -AnsibleParams $module.Params -SwitchType $vswitch.SwitchType.ToString()
 
-            # Safety: Only process properties supported by this SwitchType
-            if ($null -ne $map.SwitchType -and $vswitch.SwitchType.ToString() -ne $map.SwitchType) {
-                continue
-            }
-
-            $currentValue = $vswitch.($map.Property)
-            $isDifferent = $false
-
-            switch ($map.Type) {
-                "enum" { $isDifferent = ($currentValue.ToString() -ne $paramValue) }
-                "string" { $isDifferent = ([string]$currentValue -ne [string]$paramValue) }
-                "list" {
-                    $currList = if ($currentValue) { @($currentValue | Sort-Object) } else { @() }
-                    $desList = @($paramValue | Sort-Object)
-                    $isDifferent = (($currList -join ",") -ne ($desList -join ","))
-                }
-                default { $isDifferent = ($currentValue -ne $paramValue) }
-            }
-
-            if ($isDifferent) {
-                $changed = $true
-                break
-            }
-        }
-
-        if ($null -ne $extensions) {
+        if (-not $changed -and $null -ne $extensions) {
             $current_extensions = @(Get-VMSwitchExtension -VMSwitchName $name)
             foreach ($ext_spec in $extensions) {
                 $ext_name = $ext_spec.name
@@ -125,9 +105,11 @@ try {
 
                 if ($ext_state -eq "enabled" -and -not $ext_obj.Enabled) {
                     $changed = $true
+                    break
                 }
                 elseif ($ext_state -eq "disabled" -and $ext_obj.Enabled) {
                     $changed = $true
+                    break
                 }
             }
         }
@@ -140,7 +122,14 @@ try {
             $module.Result.switch_type = $switch_type
         }
         else {
-            $module.Result.switch_type = $vswitch.SwitchType.ToString()
+            Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $vswitch -ModuleResult $module.Result
+            # Override with desired state
+            foreach ($map in $propertyMap) {
+                $paramValue = $module.Params.($map.Param)
+                if ($null -ne $paramValue) {
+                    $module.Result.($map.Param) = $paramValue
+                }
+            }
         }
         $module.ExitJson()
     }
@@ -187,20 +176,12 @@ try {
             $set_params = @{
                 VMSwitch = $vswitch
             }
+            $set_params += Get-HyperVParametersFromMap -PropertyMap $propertyMap -AnsibleParams $module.Params -SwitchType $vswitch.SwitchType.ToString()
 
-            # Build update parameters using propertyMap
-            foreach ($map in $propertyMap) {
-                $paramValue = $module.Params.($map.Param)
-                if ($null -eq $paramValue) { continue }
-
-                # Safety: Only apply properties supported by this SwitchType
-                if ($null -ne $map.SwitchType -and $vswitch.SwitchType.ToString() -ne $map.SwitchType) {
-                    continue
-                }
-
-                # Set-VMSwitch parameter naming matches our map.Property or a specific override
-                $paramName = if ($map.Param -eq "net_adapter_names") { "NetAdapterName" } else { $map.Property }
-                $set_params.($paramName) = $paramValue
+            # Special case for net_adapter_names mapping to NetAdapterName parameter
+            if ($set_params.ContainsKey("NetAdapterInterfaceDescriptions")) {
+                $set_params.NetAdapterName = $set_params.NetAdapterInterfaceDescriptions
+                $set_params.Remove("NetAdapterInterfaceDescriptions")
             }
 
             if ($set_params.Count -gt 1) {
@@ -228,11 +209,8 @@ try {
     # Final result mapping
     $final_vswitch = Get-VMSwitch -Name $name -ErrorAction SilentlyContinue
     if ($null -ne $final_vswitch) {
-        $module.Result.switch_type = "$($final_vswitch.SwitchType)"
-        $module.Result.notes = [string]$final_vswitch.Notes
-        $module.Result.allow_management_os = [bool]$final_vswitch.AllowManagementOS
+        Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $final_vswitch -ModuleResult $module.Result
 
-        # Map enum to string explicitly to avoid empty strings for value 0
         $bw_mode = switch ([int]$final_vswitch.MinimumBandwidthMode) {
             0 { "None" }
             1 { "Absolute" }

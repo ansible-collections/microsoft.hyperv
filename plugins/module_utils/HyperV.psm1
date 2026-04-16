@@ -48,4 +48,174 @@ Function Convert-ToByte {
     }
 }
 
-Export-ModuleMember -Function Convert-ToByte
+<#
+.SYNOPSIS
+Builds a hash table of parameters for Hyper-V cmdlets based on a provided mapping and Ansible inputs.
+
+.DESCRIPTION
+Iterates through a predefined property map, checks if the corresponding Ansible parameter
+was provided (is not null), and adds it to an output hash table using the correct Hyper-V property name.
+
+.PARAMETER PropertyMap
+An array of hashtables. Each hashtable must contain 'Param' (the Ansible parameter name)
+and 'Property' (the Hyper-V cmdlet parameter name).
+.PARAMETER AnsibleParams
+The $module.Params object containing the user's playbook inputs.
+.PARAMETER SwitchType
+Optional SwitchType string to filter properties that only apply to a specific switch type (e.g., 'External').
+#>
+Function Get-HyperVParametersFromMap {
+    param (
+        [Parameter(Mandatory = $true)]
+        [array]$PropertyMap,
+
+        [Parameter(Mandatory = $true)]
+        $AnsibleParams,
+
+        [string]$SwitchType
+    )
+
+    process {
+        $outParams = @{}
+        foreach ($map in $PropertyMap) {
+            $paramValue = $AnsibleParams.($map.Param)
+            if ($null -eq $paramValue) { continue }
+
+            # Safety: Only process properties supported by this SwitchType if specified in the map
+            if ($null -ne $map.SwitchType -and $null -ne $SwitchType -and $SwitchType -ne $map.SwitchType) {
+                continue
+            }
+
+            $targetParam = if ($null -ne $map.CmdletParam) { $map.CmdletParam } else { $map.Property }
+            $outParams.($targetParam) = $paramValue
+        }
+        return $outParams
+    }
+}
+
+<#
+.SYNOPSIS
+Compares current Hyper-V object properties against desired Ansible parameters.
+
+.DESCRIPTION
+Returns $true if any property in the map differs between the current object and desired parameters.
+
+.PARAMETER PropertyMap
+The mapping definition.
+.PARAMETER CurrentObject
+The Hyper-V object (CimInstance, etc.)
+.PARAMETER AnsibleParams
+The $module.Params object.
+.PARAMETER SwitchType
+Optional current SwitchType to filter relevant properties.
+#>
+Function Test-HyperVPropertiesChanged {
+    param (
+        [Parameter(Mandatory = $true)]
+        [array]$PropertyMap,
+
+        [Parameter(Mandatory = $true)]
+        $CurrentObject,
+
+        [Parameter(Mandatory = $true)]
+        $AnsibleParams,
+
+        [string]$SwitchType
+    )
+
+    process {
+        foreach ($map in $PropertyMap) {
+            $paramValue = $AnsibleParams.($map.Param)
+            if ($null -eq $paramValue) { continue }
+
+            # Safety: Only process properties supported by this SwitchType
+            if ($null -ne $map.SwitchType -and $null -ne $SwitchType -and $SwitchType -ne $map.SwitchType) {
+                continue
+            }
+
+            $currentValue = $CurrentObject.($map.Property)
+            $isDifferent = $false
+
+            switch ($map.Type) {
+                "enum" {
+                    $curStr = if ($null -ne $currentValue) { $currentValue.ToString() } else { "" }
+                    $isDifferent = ($curStr -ne $paramValue)
+                }
+                "string" { $isDifferent = ([string]$currentValue -ne [string]$paramValue) }
+                "bool" { $isDifferent = ([bool]$currentValue -ne [bool]$paramValue) }
+                "list" {
+                    $currList = if ($currentValue) { @($currentValue | Sort-Object) } else { @() }
+                    $desList = @($paramValue | Sort-Object)
+                    $isDifferent = (($currList -join ",") -ne ($desList -join ","))
+                }
+                default { $isDifferent = ($currentValue -ne $paramValue) }
+            }
+
+            if ($isDifferent) { return $true }
+        }
+        return $false
+    }
+}
+
+<#
+.SYNOPSIS
+Populates the Ansible Result object with properties from a Hyper-V object.
+
+.DESCRIPTION
+Maps Hyper-V properties back to the expected Ansible return fields.
+
+.PARAMETER PropertyMap
+The mapping definition.
+.PARAMETER CurrentObject
+The Hyper-V object.
+.PARAMETER ModuleResult
+The $module.Result object to populate.
+#>
+Function Set-HyperVResultFromMap {
+    param (
+        [Parameter(Mandatory = $true)]
+        [array]$PropertyMap,
+
+        [Parameter(Mandatory = $true)]
+        $CurrentObject,
+
+        [Parameter(Mandatory = $true)]
+        $ModuleResult
+    )
+
+    process {
+        foreach ($map in $PropertyMap) {
+            $val = $CurrentObject.($map.Property)
+            switch ($map.Type) {
+                "enum" {
+                    # If it's a numeric enum that might return empty for 0, use string cast
+                    $ModuleResult.($map.Param) = if ($null -ne $val) { $val.ToString() } else { $null }
+                }
+                "bool" {
+                    $ModuleResult.($map.Param) = [bool]$val
+                }
+                "string" {
+                    if ([string]::IsNullOrEmpty($val)) {
+                        $ModuleResult.($map.Param) = $null
+                    }
+                    else {
+                        $ModuleResult.($map.Param) = [string]$val
+                    }
+                }
+                "list" {
+                    if ($null -ne $val) {
+                        $ModuleResult.($map.Param) = @($val)
+                    }
+                    else {
+                        $ModuleResult.($map.Param) = @()
+                    }
+                }
+                default {
+                    $ModuleResult.($map.Param) = $val
+                }
+            }
+        }
+    }
+}
+
+Export-ModuleMember -Function Convert-ToByte, Get-HyperVParametersFromMap, Test-HyperVPropertiesChanged, Set-HyperVResultFromMap
