@@ -218,4 +218,75 @@ Function Set-HyperVResultFromMap {
     }
 }
 
-Export-ModuleMember -Function Convert-ToByte, Get-HyperVParametersFromMap, Test-HyperVPropertiesChanged, Set-HyperVResultFromMap
+<#
+.SYNOPSIS
+Checks if an IP address belongs to a CIDR range.
+
+.DESCRIPTION
+Supports IPv4 and IPv6. Also handles shorthand CIDR notation like "10/8".
+
+.PARAMETER IP
+The IP address to check.
+.PARAMETER CIDR
+The CIDR range (e.g. "192.168.1.0/24" or "10/8").
+#>
+Function Test-IPInCidr {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$IP,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CIDR
+    )
+
+    process {
+        try {
+            if ($CIDR -notmatch "/") {
+                return $IP -eq $CIDR
+            }
+
+            $parts = $CIDR.Split('/')
+            $networkStr = $parts[0]
+
+            # Handle shorthand like "10/8" -> "10.0.0.0/8"
+            if ($networkStr -notmatch "\.") {
+                $networkStr = "$networkStr.0.0.0"
+            }
+            elseif ($networkStr.Split(".").Count -lt 4) {
+                while ($networkStr.Split(".").Count -lt 4) { $networkStr += ".0" }
+            }
+
+            $network = [System.Net.IPAddress]::Parse($networkStr)
+            $maskLength = [int]$parts[1]
+            $targetIP = [System.Net.IPAddress]::Parse($IP)
+
+            if ($network.AddressFamily -ne $targetIP.AddressFamily) { return $false }
+
+            $networkBytes = $network.GetAddressBytes()
+            $ipBytes = $targetIP.GetAddressBytes()
+
+            $fullBytes = if ($network.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork) { 4 } else { 16 }
+
+            for ($i = 0; $i -lt $fullBytes; $i++) {
+                $remainingBits = $maskLength - ($i * 8)
+                if ($remainingBits -ge 8) {
+                    if ($networkBytes[$i] -ne $ipBytes[$i]) { return $false }
+                }
+                elseif ($remainingBits -gt 0) {
+                    $mask = [byte](256 - [System.Math]::Pow(2, (8 - $remainingBits)))
+                    if (($networkBytes[$i] -band $mask) -ne ($ipBytes[$i] -band $mask)) { return $false }
+                    break
+                }
+                else {
+                    break
+                }
+            }
+            return $true
+        }
+        catch {
+            return $false
+        }
+    }
+}
+
+Export-ModuleMember -Function Convert-ToByte, Get-HyperVParametersFromMap, Test-HyperVPropertiesChanged, Set-HyperVResultFromMap, Test-IPInCidr
