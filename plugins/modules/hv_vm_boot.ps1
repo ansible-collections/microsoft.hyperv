@@ -12,7 +12,8 @@ $spec = @{
         secure_boot = @{ type = "bool" }
         secure_boot_template = @{ type = "str"; choices = @("MicrosoftWindows", "MicrosoftUEFICertificateAuthority", "OpenSourceShieldedVM") }
         num_lock = @{ type = "bool" }
-        startup_order = @{ type = "list"; elements = "str"; choices = @("CD", "Floppy", "IDE", "LegacyNetworkAdapter") }
+        startup_order = @{ type = "list"; elements = "str"; choices = @("CD", "Floppy", "IDE", "LegacyNetworkAdapter", "NetworkAdapter", "VHD") }
+        boot_order = @{ type = "list"; elements = "str"; choices = @("Network", "DVD", "SCSI", "File") }
     }
     supports_check_mode = $true
 }
@@ -39,8 +40,8 @@ try {
     $changed = $false
 
     if ($gen -eq 1) {
-        if ($null -ne $module.Params.secure_boot -or $null -ne $module.Params.secure_boot_template) {
-            $module.FailJson("secure_boot and secure_boot_template are only supported on Generation 2 Virtual Machines.")
+        if ($null -ne $module.Params.secure_boot -or $null -ne $module.Params.secure_boot_template -or $null -ne $module.Params.boot_order) {
+            $module.FailJson("secure_boot, secure_boot_template, and boot_order are only supported on Generation 2 Virtual Machines.")
         }
 
         $bios = Get-VMBios -VMName $name
@@ -54,15 +55,11 @@ try {
             $reqOrder = @($module.Params.startup_order)
             foreach ($item in $currentOrder) {
                 if ($reqOrder -notcontains $item) {
-
                     $reqOrder += $item
-
                 }
             }
             if (($currentOrder -join ",") -ne ($reqOrder -join ",")) {
-
                 $changed = $true
-
             }
         }
 
@@ -107,13 +104,41 @@ try {
         if ($null -ne $module.Params.secure_boot) {
             $curSB = ($fw.SecureBoot.ToString() -eq "On")
             if ($curSB -ne $module.Params.secure_boot) {
-
                 $changed = $true
-
             }
         }
         if ($null -ne $module.Params.secure_boot_template -and $fw.SecureBootTemplate -ne $module.Params.secure_boot_template) {
             $changed = $true
+        }
+
+        # BootOrder detection
+        if ($null -ne $module.Params.boot_order) {
+            $currentBootOrder = $fw.BootOrder
+
+            # Map friendly names to objects
+            $desiredTypeOrder = @($module.Params.boot_order)
+            $newBootOrder = @()
+
+            foreach ($type in $desiredTypeOrder) {
+                $match = $currentBootOrder | Where-Object { $_.Description -like "*$type*" }
+                if ($match) {
+                    $newBootOrder += @($match)
+                }
+            }
+
+            # Append remaining
+            foreach ($existing in $currentBootOrder) {
+                if ($newBootOrder.FirmwarePath -notcontains $existing.FirmwarePath) {
+                    $newBootOrder += $existing
+                }
+            }
+
+            # Compare FirmwarePath for change
+            $currPaths = @($currentBootOrder.FirmwarePath) -join ","
+            $newPaths = @($newBootOrder.FirmwarePath) -join ","
+            if ($currPaths -ne $newPaths) {
+                $changed = $true
+            }
         }
 
         $module.Result.changed = $changed
@@ -131,6 +156,9 @@ try {
             if ($null -ne $module.Params.secure_boot_template) {
                 $fwParams.SecureBootTemplate = $module.Params.secure_boot_template
             }
+            if ($null -ne $module.Params.boot_order) {
+                $fwParams.BootOrder = $newBootOrder
+            }
             Set-VMFirmware @fwParams | Out-Null
             $fw = Get-VMFirmware -VMName $name
         }
@@ -138,12 +166,36 @@ try {
         $module.Result.secure_boot = ($fw.SecureBoot.ToString() -eq "On")
         $module.Result.secure_boot_template = $fw.SecureBootTemplate
 
+        # Return friendly types for boot_order
+        $friendlyBootOrder = @()
+        foreach ($device in $fw.BootOrder) {
+            if ($device.Description -like "*Network*") {
+                $friendlyBootOrder += "Network"
+            }
+            elseif ($device.Description -like "*SCSI*") {
+                $friendlyBootOrder += "SCSI"
+            }
+            elseif ($device.Description -like "*DVD*") {
+                $friendlyBootOrder += "DVD"
+            }
+            elseif ($device.Description -like "*File*") {
+                $friendlyBootOrder += "File"
+            }
+            else {
+                $friendlyBootOrder += $device.Description
+            }
+        }
+        $module.Result.boot_order = $friendlyBootOrder
+
         if ($module.CheckMode -and $changed) {
             if ($null -ne $module.Params.secure_boot) {
                 $module.Result.secure_boot = $module.Params.secure_boot
             }
             if ($null -ne $module.Params.secure_boot_template) {
                 $module.Result.secure_boot_template = $module.Params.secure_boot_template
+            }
+            if ($null -ne $module.Params.boot_order) {
+                $module.Result.boot_order = $module.Params.boot_order
             }
         }
     }
