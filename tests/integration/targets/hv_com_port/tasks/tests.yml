@@ -1,0 +1,97 @@
+---
+- name: Test - Configure COM 1 with named pipe (Check Mode)
+  microsoft.hyperv.hv_com_port:
+    vm_name: "{{ test_vm_com }}"
+    number: 1
+    path: "\\\\.\\pipe\\ansible_debug"
+    debugger_mode: "On"
+  check_mode: true
+  register: com1_check
+
+- name: Assert COM 1 Check Mode
+  assert:
+    that:
+      - com1_check.changed == true
+      - com1_check.path == "\\\\.\\pipe\\ansible_debug"
+      - com1_check.debugger_mode == "On"
+
+- name: Test - Configure COM 1 with named pipe
+  microsoft.hyperv.hv_com_port:
+    vm_name: "{{ test_vm_com }}"
+    number: 1
+    path: "\\\\.\\pipe\\ansible_debug"
+    debugger_mode: "On"
+  register: com1_actual
+
+- name: Assert COM 1 Actual
+  assert:
+    that:
+      - com1_actual.changed == true
+      - com1_actual.path == "\\\\.\\pipe\\ansible_debug"
+      - com1_actual.debugger_mode == "On"
+
+- name: Test - Idempotency COM 1
+  microsoft.hyperv.hv_com_port:
+    vm_name: "{{ test_vm_com }}"
+    number: 1
+    path: "\\\\.\\pipe\\ansible_debug"
+    debugger_mode: "On"
+  register: com1_idem
+
+- name: Assert COM 1 Idempotency
+  assert:
+    that:
+      - com1_idem.changed == false
+
+- name: Test - Disconnect COM 1 (Check Mode)
+  microsoft.hyperv.hv_com_port:
+    vm_name: "{{ test_vm_com }}"
+    number: 1
+    path: ""
+  check_mode: true
+  register: com1_disconnect_check
+
+- name: Assert COM 1 Disconnect Check Mode
+  assert:
+    that:
+      - com1_disconnect_check.changed == true
+      - com1_disconnect_check.path == ""
+
+- name: Test - Disconnect COM 1
+  microsoft.hyperv.hv_com_port:
+    vm_name: "{{ test_vm_com }}"
+    number: 1
+    path: ""
+  register: com1_disconnect_actual
+
+- name: Assert COM 1 Disconnect Actual
+  assert:
+    that:
+      - com1_disconnect_actual.changed == true
+      - com1_disconnect_actual.path is none
+
+- name: Test - Configure Debugger Mode only (Check Mode)
+  microsoft.hyperv.hv_com_port:
+    vm_name: "{{ test_vm_com }}"
+    number: 2
+    debugger_mode: "Off"
+  check_mode: true
+  register: com2_debugger_check
+
+- name: Assert COM 2 Debugger Check Mode
+  assert:
+    that:
+      - com2_debugger_check.changed == false
+
+- name: Test - Toggle Debugger Mode
+  microsoft.hyperv.hv_com_port:
+    vm_name: "{{ test_vm_com }}"
+    number: 2
+    debugger_mode: "On"
+  register: com2_toggle
+
+- name: Assert COM 2 Toggle
+  assert:
+    that:
+      - com2_toggle.changed == true
+      - com2_toggle.debugger_mode == "On"
