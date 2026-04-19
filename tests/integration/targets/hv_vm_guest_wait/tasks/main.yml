@@ -1,0 +1,28 @@
+---
+- name: Define Test VM Name
+  set_fact:
+    test_vm_wait: "AnsibleTestWait_{{ 99999 | random }}"
+
+- name: Run hv_vm_guest_wait integration tests
+  block:
+    - name: Create VM for waiting test
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_wait }}"
+        state: present
+        memory_startup_bytes: "256MB"
+        generation: 2
+
+    - name: Start VM
+      microsoft.hyperv.hv_vm_state:
+        name: "{{ test_vm_wait }}"
+        state: running
+
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove Test VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_wait }}"
+        state: absent
+      ignore_errors: true

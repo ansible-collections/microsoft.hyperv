@@ -1,0 +1,81 @@
+---
+- name: Test Check Mode (Condition not met)
+  microsoft.hyperv.hv_vm_guest_wait:
+    name: "{{ test_vm_wait }}"
+    timeout: 30
+    wait_for_ip: true
+    wait_for_heartbeat: true
+  check_mode: true
+  register: wait_check_not_met
+
+- name: Assert check_mode returns immediately with changed=false
+  assert:
+    that:
+      - wait_check_not_met.changed == false
+
+- name: Test Success Path (Disable both waits)
+  microsoft.hyperv.hv_vm_guest_wait:
+    name: "{{ test_vm_wait }}"
+    wait_for_ip: false
+    wait_for_heartbeat: false
+  register: wait_success_immediate
+
+- name: Assert immediate success returns changed=false
+  assert:
+    that:
+      - wait_success_immediate.changed == false
+
+- name: Test Idempotency (Run immediate success twice)
+  microsoft.hyperv.hv_vm_guest_wait:
+    name: "{{ test_vm_wait }}"
+    wait_for_ip: false
+    wait_for_heartbeat: false
+  register: wait_idem
+
+- name: Assert idempotency returns changed=false
+  assert:
+    that:
+      - wait_idem.changed == false
+
+- name: Test Timeout behavior (Condition never met)
+  microsoft.hyperv.hv_vm_guest_wait:
+    name: "{{ test_vm_wait }}"
+    timeout: 5
+    sleep_interval: 1
+    wait_for_ip: true
+  register: wait_timeout
+  ignore_errors: true
+
+- name: Assert timeout failure
+  assert:
+    that:
+      - wait_timeout.failed == true
+      - "'Timed out waiting' in wait_timeout.msg"
+
+- name: Test CIDR parameter parsing (No wait)
+  microsoft.hyperv.hv_vm_guest_wait:
+    name: "{{ test_vm_wait }}"
+    expected_ip: "10.0.0.0/8"
+    wait_for_ip: false
+    wait_for_heartbeat: false
+  register: wait_cidr_parse
+
+- name: Assert CIDR parse success
+  assert:
+    that:
+      - wait_cidr_parse.changed == false
+
+- name: Test CIDR matching timeout
+  microsoft.hyperv.hv_vm_guest_wait:
+    name: "{{ test_vm_wait }}"
+    expected_ip: "10.0.0.0/8"
+    timeout: 5
+    sleep_interval: 1
+  register: wait_cidr_timeout
+  ignore_errors: true
+
+- name: Assert CIDR timeout failure
+  assert:
+    that:
+      - wait_cidr_timeout.failed == true
+      - "'Timed out waiting' in wait_cidr_timeout.msg"
