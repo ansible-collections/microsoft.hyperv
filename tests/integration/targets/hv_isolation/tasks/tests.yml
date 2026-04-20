@@ -1,0 +1,98 @@
+---
+- name: Test - Configure VXLAN Isolation (Check Mode)
+  microsoft.hyperv.hv_isolation:
+    vm_name: "{{ test_vm_iso }}"
+    adapter_name: "{{ test_adapter_name }}"
+    isolation_mode: "NativeVirtualSubnet"
+    default_isolation_id: 5000
+    multi_tenant_stack: "On"
+  check_mode: true
+  register: iso_vxlan_check
+
+- name: Assert VXLAN Check Mode
+  assert:
+    that:
+      - iso_vxlan_check.changed == true
+      - iso_vxlan_check.isolation_mode == "NativeVirtualSubnet"
+      - iso_vxlan_check.default_isolation_id == 5000
+      - iso_vxlan_check.multi_tenant_stack == "On"
+
+- name: Test - Configure VXLAN Isolation
+  microsoft.hyperv.hv_isolation:
+    vm_name: "{{ test_vm_iso }}"
+    adapter_name: "{{ test_adapter_name }}"
+    isolation_mode: "NativeVirtualSubnet"
+    default_isolation_id: 5000
+    multi_tenant_stack: "On"
+  register: iso_vxlan_actual
+
+- name: Assert VXLAN Actual
+  assert:
+    that:
+      - iso_vxlan_actual.changed == true
+      - iso_vxlan_actual.isolation_mode == "NativeVirtualSubnet"
+      - iso_vxlan_actual.default_isolation_id == 5000
+      - iso_vxlan_actual.multi_tenant_stack == "On"
+
+- name: Test - Idempotency VXLAN Isolation
+  microsoft.hyperv.hv_isolation:
+    vm_name: "{{ test_vm_iso }}"
+    adapter_name: "{{ test_adapter_name }}"
+    isolation_mode: "NativeVirtualSubnet"
+    default_isolation_id: 5000
+    multi_tenant_stack: "On"
+  register: iso_vxlan_idem
+
+- name: Assert Idempotency VXLAN
+  assert:
+    that:
+      - iso_vxlan_idem.changed == false
+
+- name: Test - Disable Isolation (Check Mode)
+  microsoft.hyperv.hv_isolation:
+    vm_name: "{{ test_vm_iso }}"
+    adapter_name: "{{ test_adapter_name }}"
+    isolation_mode: "None"
+    default_isolation_id: 0
+    multi_tenant_stack: "Off"
+  check_mode: true
+  register: iso_disable_check
+
+- name: Assert Disable Check Mode
+  assert:
+    that:
+      - iso_disable_check.changed == true
+      - iso_disable_check.isolation_mode == "None"
+      - iso_disable_check.default_isolation_id == 0
+      - iso_disable_check.multi_tenant_stack == "Off"
+
+- name: Test - Disable Isolation
+  microsoft.hyperv.hv_isolation:
+    vm_name: "{{ test_vm_iso }}"
+    adapter_name: "{{ test_adapter_name }}"
+    isolation_mode: "None"
+    default_isolation_id: 0
+    multi_tenant_stack: "Off"
+  register: iso_disable_actual
+
+- name: Assert Disable Actual
+  assert:
+    that:
+      - iso_disable_actual.changed == true
+      - iso_disable_actual.isolation_mode == "None"
+      - iso_disable_actual.default_isolation_id == 0
+      - iso_disable_actual.multi_tenant_stack == "Off"
+
+- name: Test - Idempotency Disable Isolation
+  microsoft.hyperv.hv_isolation:
+    vm_name: "{{ test_vm_iso }}"
+    adapter_name: "{{ test_adapter_name }}"
+    isolation_mode: "None"
+    default_isolation_id: 0
+    multi_tenant_stack: "Off"
+  register: iso_disable_idem
+
+- name: Assert Idempotency Disable
+  assert:
+    that:
+      - iso_disable_idem.changed == false
