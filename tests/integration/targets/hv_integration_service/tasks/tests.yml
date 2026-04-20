@@ -1,0 +1,78 @@
+---
+- name: Test - Enable Guest Service Interface (Check Mode)
+  microsoft.hyperv.hv_integration_service:
+    vm_name: "{{ test_vm_svc }}"
+    service_name: "Guest Service Interface"
+    state: enabled
+  check_mode: true
+  register: svc_enable_check
+
+- name: Assert Enable Check Mode
+  assert:
+    that:
+      - svc_enable_check.changed == true
+      - svc_enable_check.state == "enabled"
+
+- name: Test - Enable Guest Service Interface
+  microsoft.hyperv.hv_integration_service:
+    vm_name: "{{ test_vm_svc }}"
+    service_name: "Guest Service Interface"
+    state: enabled
+  register: svc_enable_actual
+
+- name: Assert Enable Actual
+  assert:
+    that:
+      - svc_enable_actual.changed == true
+      - svc_enable_actual.state == "enabled"
+
+- name: Test - Idempotency Enable
+  microsoft.hyperv.hv_integration_service:
+    vm_name: "{{ test_vm_svc }}"
+    service_name: "Guest Service Interface"
+    state: enabled
+  register: svc_enable_idem
+
+- name: Assert Idempotency Enable
+  assert:
+    that:
+      - svc_enable_idem.changed == false
+
+- name: Test - Disable Time Synchronization (Check Mode)
+  microsoft.hyperv.hv_integration_service:
+    vm_name: "{{ test_vm_svc }}"
+    service_name: "Time Synchronization"
+    state: disabled
+  check_mode: true
+  register: svc_disable_check
+
+- name: Assert Disable Check Mode
+  assert:
+    that:
+      - svc_disable_check.changed == true
+      - svc_disable_check.state == "disabled"
+
+- name: Test - Disable Time Synchronization
+  microsoft.hyperv.hv_integration_service:
+    vm_name: "{{ test_vm_svc }}"
+    service_name: "Time Synchronization"
+    state: disabled
+  register: svc_disable_actual
+
+- name: Assert Disable Actual
+  assert:
+    that:
+      - svc_disable_actual.changed == true
+      - svc_disable_actual.state == "disabled"
+
+- name: Test - Idempotency Disable
+  microsoft.hyperv.hv_integration_service:
+    vm_name: "{{ test_vm_svc }}"
+    service_name: "Time Synchronization"
+    state: disabled
+  register: svc_disable_idem
+
+- name: Assert Idempotency Disable
+  assert:
+    that:
+      - svc_disable_idem.changed == false
