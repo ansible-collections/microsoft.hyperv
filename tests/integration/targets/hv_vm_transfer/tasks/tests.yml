@@ -1,0 +1,94 @@
+---
+- name: Test - Export VM (Check Mode)
+  microsoft.hyperv.hv_vm_transfer:
+    name: "{{ test_vm_transfer }}"
+    path: "{{ test_export_path }}"
+    state: exported
+  check_mode: true
+  register: export_check
+
+- name: Assert Export Check Mode
+  assert:
+    that:
+      - export_check.changed == true
+
+- name: Test - Export VM
+  microsoft.hyperv.hv_vm_transfer:
+    name: "{{ test_vm_transfer }}"
+    path: "{{ test_export_path }}"
+    state: exported
+  register: export_actual
+
+- name: Assert Export Actual
+  assert:
+    that:
+      - export_actual.changed == true
+      - export_actual.id is defined
+
+- name: Test - Idempotency Export
+  microsoft.hyperv.hv_vm_transfer:
+    name: "{{ test_vm_transfer }}"
+    path: "{{ test_export_path }}"
+    state: exported
+  register: export_idem
+
+- name: Assert Idempotency Export
+  assert:
+    that:
+      - export_idem.changed == false
+
+- name: Get Config File Path
+  ansible.windows.win_powershell:
+    script: |
+      $exportFolder = Join-Path "{{ test_export_path }}" "{{ test_vm_transfer }}"
+      $configFile = Get-ChildItem -Path $exportFolder -Recurse -Include "*.vmcx","*.xml" | Select-Object -First 1
+      $Ansible.Changed = $false
+      $Ansible.Result.config_path = $configFile.FullName
+  register: config_lookup
+
+- name: Setup - Remove original VM before import
+  microsoft.hyperv.hv_vm:
+    name: "{{ test_vm_transfer }}"
+    state: absent
+
+- name: Test - Import VM as Clone (Check Mode)
+  microsoft.hyperv.hv_vm_transfer:
+    name: "{{ test_vm_imported }}"
+    path: "{{ config_lookup.result.config_path }}"
+    state: imported
+    import_mode: copy
+  check_mode: true
+  register: import_check
+
+- name: Assert Import Check Mode
+  assert:
+    that:
+      - import_check.changed == true
+
+- name: Test - Import VM as Clone
+  microsoft.hyperv.hv_vm_transfer:
+    name: "{{ test_vm_imported }}"
+    path: "{{ config_lookup.result.config_path }}"
+    state: imported
+    import_mode: copy
+  register: import_actual
+
+- name: Assert Import Actual
+  assert:
+    that:
+      - import_actual.changed == true
+      - import_actual.name == test_vm_imported
+      - import_actual.id is defined
+
+- name: Test - Idempotency Import
+  microsoft.hyperv.hv_vm_transfer:
+    name: "{{ test_vm_imported }}"
+    path: "{{ config_lookup.result.config_path }}"
+    state: imported
+    import_mode: copy
+  register: import_idem
+
+- name: Assert Idempotency Import
+  assert:
+    that:
+      - import_idem.changed == false

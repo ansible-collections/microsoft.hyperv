@@ -1,0 +1,33 @@
+---
+- name: Define test VM and path
+  set_fact:
+    test_vm_transfer: "AnsibleTransfer_{{ 99999 | random }}"
+    test_vm_imported: "AnsibleImported_{{ 99999 | random }}"
+    test_export_path: "C:\\AnsibleExport_{{ 99999 | random }}"
+
+- block:
+    - name: Setup - Create a temporary dummy VM for testing
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_transfer }}"
+        state: present
+        generation: 2
+        memory_startup_bytes: "256MB"
+
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove VMs
+      microsoft.hyperv.hv_vm:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ test_vm_transfer }}"
+        - "{{ test_vm_imported }}"
+      ignore_errors: true
+
+    - name: Teardown - Remove export directory
+      ansible.windows.win_file:
+        path: "{{ test_export_path }}"
+        state: absent
+      ignore_errors: true
