@@ -1,0 +1,15 @@
+---
+- name: Define test subnet
+  set_fact:
+    test_subnet: "192.168.{{ 200 | random(start=100) }}.0/24"
+
+- block:
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove test migration network
+      microsoft.hyperv.hv_migration_network:
+        subnet: "{{ test_subnet }}"
+        state: absent
+      ignore_errors: true
