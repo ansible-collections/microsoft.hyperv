@@ -23,7 +23,7 @@ $state = $module.Params.state
 $module.Result.vm_name = $vm_name
 $TAG_PREFIX = "[AnsibleTag]"
 
-Function Parse-VMNotesToTags {
+Function ConvertFrom-VMNote {
     param ([string]$Notes)
     $parsedTags = @{}
     $nonTagNotes = @()
@@ -50,7 +50,7 @@ Function Parse-VMNotesToTags {
     return @{ Tags = $parsedTags; NonTags = $nonTagNotes }
 }
 
-Function Build-TagsToVMNotes {
+Function ConvertTo-VMNote {
     param ([hashtable]$Tags, [array]$NonTags)
     $lines = @()
     if ($NonTags -and $NonTags.Count -gt 0) {
@@ -72,7 +72,7 @@ try {
         $module.FailJson("Virtual Machine '$vm_name' not found.")
     }
 
-    $parsedData = Parse-VMNotesToTags -Notes $vm.Notes
+    $parsedData = ConvertFrom-VMNote -Notes $vm.Notes
     $currentTags = $parsedData.Tags
     $nonTags = $parsedData.NonTags
 
@@ -128,7 +128,7 @@ try {
     }
 
     if ($changed) {
-        $newNotesString = Build-TagsToVMNotes -Tags $newTags -NonTags $nonTags
+        $newNotesString = ConvertTo-VMNote -Tags $newTags -NonTags $nonTags
         Set-VM -VM $vm -Notes $newNotesString -ErrorAction Stop | Out-Null
     }
 

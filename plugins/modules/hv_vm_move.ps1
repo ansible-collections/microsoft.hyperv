@@ -35,8 +35,6 @@ try {
         $module.FailJson("Virtual Machine '$name' not found.")
     }
 
-    $changed = $false
-
     if ($null -ne $destHost) {
         # Host-to-Host Migration
         $currentHost = $env:COMPUTERNAME
@@ -44,7 +42,6 @@ try {
             Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $vm -ModuleResult $module.Result
         }
         else {
-            $changed = $true
             $module.Result.changed = $true
 
             if ($module.CheckMode) {
@@ -80,7 +77,6 @@ try {
             Set-HyperVResultFromMap -PropertyMap $propertyMap -CurrentObject $vm -ModuleResult $module.Result
         }
         else {
-            $changed = $true
             $module.Result.changed = $true
 
             if ($module.CheckMode) {
@@ -98,7 +94,6 @@ try {
                 DestinationStoragePath = $destPath
                 ErrorAction = "Stop"
             }
-            if ($retainVhd) { $moveParams.RetainVhdCopiesOnSource = $true }
 
             Move-VMStorage @moveParams
 
