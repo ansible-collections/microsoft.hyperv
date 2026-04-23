@@ -34,3 +34,15 @@
   assert:
     that:
       - move_storage_idem.changed == false
+
+- name: Test - Failure Handling (Missing destinations)
+  microsoft.hyperv.hv_vm_move:
+    name: "{{ test_vm_move }}"
+  ignore_errors: true
+  register: move_fail
+
+- name: Assert Failure Handling
+  assert:
+    that:
+      - move_fail.failed == true
+      - "'You must specify either' in move_fail.msg"

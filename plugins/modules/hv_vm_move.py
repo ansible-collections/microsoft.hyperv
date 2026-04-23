@@ -30,11 +30,6 @@ options:
       - The target directory path where the VM files (config, snapshots, paging, and VHDs) will be moved.
       - If C(destination_host) is specified but this is omitted, the VM is moved but its files stay where they are (requires shared storage).
     type: str
-  retain_vhd_copies:
-    description:
-      - If C(true), the original VHD files are retained on the source storage after the move.
-    type: bool
-    default: false
 author:
   - Ansible Cloud Team (@ansible)
 '''
