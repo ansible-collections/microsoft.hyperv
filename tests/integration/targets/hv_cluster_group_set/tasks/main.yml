@@ -1,0 +1,16 @@
+---
+- name: Define test set name
+  set_fact:
+    test_set_name: "AnsibleTestSet_{{ 99999 | random }}"
+
+- block:
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove dummy Cluster Group
+      ansible.windows.win_powershell:
+        script: |
+          Remove-ClusterGroup -Name "{{ test_dummy_group }}" -RemoveResources -Force -ErrorAction SilentlyContinue
+      when: test_dummy_group is defined and inventory_hostname == 'hyperv_test_host'
+      ignore_errors: true
