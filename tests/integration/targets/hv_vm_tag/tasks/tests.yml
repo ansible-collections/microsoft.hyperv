@@ -1,0 +1,91 @@
+---
+- name: Test - Add Tags (Check Mode)
+  microsoft.hyperv.hv_vm_tag:
+    vm_name: "{{ test_vm_tag }}"
+    state: present
+    tags:
+      Environment: Production
+      Role: WebServer
+  check_mode: true
+  register: tag_add_check
+
+- name: Assert Add Tags Check Mode
+  assert:
+    that:
+      - tag_add_check.changed == true
+      - tag_add_check.tags.Environment == "Production"
+      - tag_add_check.tags.Role == "WebServer"
+
+- name: Test - Add Tags
+  microsoft.hyperv.hv_vm_tag:
+    vm_name: "{{ test_vm_tag }}"
+    state: present
+    tags:
+      Environment: Production
+      Role: WebServer
+  register: tag_add_actual
+
+- name: Assert Add Tags Actual
+  assert:
+    that:
+      - tag_add_actual.changed == true
+      - tag_add_actual.tags.Environment == "Production"
+      - tag_add_actual.tags.Role == "WebServer"
+
+- name: Test - Idempotency Add Tags
+  microsoft.hyperv.hv_vm_tag:
+    vm_name: "{{ test_vm_tag }}"
+    state: present
+    tags:
+      Environment: Production
+      Role: WebServer
+  register: tag_add_idem
+
+- name: Assert Idempotency Add
+  assert:
+    that:
+      - tag_add_idem.changed == false
+
+- name: Verify original notes are intact
+  ansible.windows.win_powershell:
+    script: |
+      $notes = (Get-VM -Name "{{ test_vm_tag }}").Notes
+      $Ansible.Result.contains_original = $notes -match "This is a standard note"
+  register: notes_verify
+
+- name: Assert original notes exist
+  assert:
+    that:
+      - notes_verify.result.contains_original == true
+
+- name: Test - Exact Match Tags
+  microsoft.hyperv.hv_vm_tag:
+    vm_name: "{{ test_vm_tag }}"
+    state: exact
+    tags:
+      Environment: Staging
+      Owner: DevOps
+  register: tag_exact
+
+- name: Assert Exact Match Tags
+  assert:
+    that:
+      - tag_exact.changed == true
+      - tag_exact.tags.Environment == "Staging"
+      - tag_exact.tags.Owner == "DevOps"
+      - "'Role' not in tag_exact.tags"
+
+- name: Test - Remove Tags
+  microsoft.hyperv.hv_vm_tag:
+    vm_name: "{{ test_vm_tag }}"
+    state: absent
+    tags:
+      Owner: DevOps
+  register: tag_remove
+
+- name: Assert Remove Tags
+  assert:
+    that:
+      - tag_remove.changed == true
+      - "'Owner' not in tag_remove.tags"
+      - tag_remove.tags.Environment == "Staging"

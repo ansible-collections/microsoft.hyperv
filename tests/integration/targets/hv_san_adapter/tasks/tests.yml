@@ -1,0 +1,52 @@
+---
+- name: Test - Add vHBA (Check Mode - Missing SAN)
+  microsoft.hyperv.hv_san_adapter:
+    vm_name: "{{ test_vm_san }}"
+    san_name: "NonExistentSAN"
+    state: present
+  check_mode: true
+  register: san_add_check
+
+- name: Assert Add Check Mode
+  assert:
+    that:
+      - san_add_check.changed == true
+      - san_add_check.san_name == "NonExistentSAN"
+
+- name: Test - Add vHBA (Failure - Missing SAN)
+  microsoft.hyperv.hv_san_adapter:
+    vm_name: "{{ test_vm_san }}"
+    san_name: "NonExistentSAN"
+    state: present
+  register: san_fail
+  ignore_errors: true
+
+- name: Assert Failure Missing SAN
+  assert:
+    that:
+      - san_fail.failed == true
+      - "('NonExistentSAN' in san_fail.msg) or ('VirtualizationBasedSecurityOptOut' in san_fail.msg)"
+
+- name: Test - Remove non-existent vHBA
+  microsoft.hyperv.hv_san_adapter:
+    vm_name: "{{ test_vm_san }}"
+    state: absent
+  register: san_absent_idem
+
+- name: Assert Idempotency Absent
+  assert:
+    that:
+      - san_absent_idem.changed == false
+
+- name: Test - Missing san_name Parameter
+  microsoft.hyperv.hv_san_adapter:
+    vm_name: "{{ test_vm_san }}"
+    state: present
+  register: san_missing_param
+  ignore_errors: true
+
+- name: Assert Failure Missing Param
+  assert:
+    that:
+      - san_missing_param.failed == true
+      - "'san_name is required' in san_missing_param.msg"

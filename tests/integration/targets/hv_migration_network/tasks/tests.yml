@@ -1,0 +1,102 @@
+---
+- name: Test - Add Migration Network (Check Mode)
+  microsoft.hyperv.hv_migration_network:
+    subnet: "{{ test_subnet }}"
+    priority: 15
+    state: present
+  check_mode: true
+  register: net_add_check
+
+- name: Assert Add Network Check Mode
+  assert:
+    that:
+      - net_add_check.changed == true
+      - net_add_check.subnet == test_subnet
+      - net_add_check.priority == 15
+
+- name: Test - Add Migration Network
+  microsoft.hyperv.hv_migration_network:
+    subnet: "{{ test_subnet }}"
+    priority: 15
+    state: present
+  register: net_add_actual
+
+- name: Assert Add Network Actual
+  assert:
+    that:
+      - net_add_actual.changed == true
+      - net_add_actual.subnet == test_subnet
+      - net_add_actual.priority == 15
+
+- name: Test - Idempotency Add Network
+  microsoft.hyperv.hv_migration_network:
+    subnet: "{{ test_subnet }}"
+    priority: 15
+    state: present
+  register: net_add_idem
+
+- name: Assert Idempotency Add Network
+  assert:
+    that:
+      - net_add_idem.changed == false
+
+- name: Test - Update Priority (Check Mode)
+  microsoft.hyperv.hv_migration_network:
+    subnet: "{{ test_subnet }}"
+    priority: 5
+    state: present
+  check_mode: true
+  register: net_update_check
+
+- name: Assert Update Priority Check Mode
+  assert:
+    that:
+      - net_update_check.changed == true
+      - net_update_check.priority == 5
+
+- name: Test - Update Priority
+  microsoft.hyperv.hv_migration_network:
+    subnet: "{{ test_subnet }}"
+    priority: 5
+    state: present
+  register: net_update_actual
+
+- name: Assert Update Priority Actual
+  assert:
+    that:
+      - net_update_actual.changed == true
+      - net_update_actual.priority == 5
+
+- name: Test - Remove Network (Check Mode)
+  microsoft.hyperv.hv_migration_network:
+    subnet: "{{ test_subnet }}"
+    state: absent
+  check_mode: true
+  register: net_remove_check
+
+- name: Assert Remove Network Check Mode
+  assert:
+    that:
+      - net_remove_check.changed == true
+
+- name: Test - Remove Network
+  microsoft.hyperv.hv_migration_network:
+    subnet: "{{ test_subnet }}"
+    state: absent
+  register: net_remove_actual
+
+- name: Assert Remove Network Actual
+  assert:
+    that:
+      - net_remove_actual.changed == true
+
+- name: Test - Idempotency Remove Network
+  microsoft.hyperv.hv_migration_network:
+    subnet: "{{ test_subnet }}"
+    state: absent
+  register: net_remove_idem
+
+- name: Assert Idempotency Remove Network
+  assert:
+    that:
+      - net_remove_idem.changed == false

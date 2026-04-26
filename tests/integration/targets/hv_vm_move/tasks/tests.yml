@@ -1,0 +1,48 @@
+---
+- name: Test - Storage Migration (Check Mode)
+  microsoft.hyperv.hv_vm_move:
+    name: "{{ test_vm_move }}"
+    destination_storage_path: "{{ test_move_path }}"
+  check_mode: true
+  register: move_storage_check
+
+- name: Assert Storage Migration Check Mode
+  assert:
+    that:
+      - move_storage_check.changed == true
+      - move_storage_check.destination_storage_path == test_move_path
+
+- name: Test - Storage Migration
+  microsoft.hyperv.hv_vm_move:
+    name: "{{ test_vm_move }}"
+    destination_storage_path: "{{ test_move_path }}"
+  register: move_storage_actual
+
+- name: Assert Storage Migration Actual
+  assert:
+    that:
+      - move_storage_actual.changed == true
+      - move_storage_actual.destination_storage_path == test_move_path
+
+- name: Test - Idempotency Storage Migration
+  microsoft.hyperv.hv_vm_move:
+    name: "{{ test_vm_move }}"
+    destination_storage_path: "{{ test_move_path }}"
+  register: move_storage_idem
+
+- name: Assert Idempotency Storage Migration
+  assert:
+    that:
+      - move_storage_idem.changed == false
+
+- name: Test - Failure Handling (Missing destinations)
+  microsoft.hyperv.hv_vm_move:
+    name: "{{ test_vm_move }}"
+  ignore_errors: true
+  register: move_fail
+
+- name: Assert Failure Handling
+  assert:
+    that:
+      - move_fail.failed == true
+      - "'You must specify either' in move_fail.msg"
