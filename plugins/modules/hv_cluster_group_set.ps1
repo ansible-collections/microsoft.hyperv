@@ -9,7 +9,7 @@ $spec = @{
     options = @{
         name = @{ type = "str"; required = $true }
         groups = @{ type = "list"; elements = "str" }
-        provider = @{ type = "str" }
+        providers = @{ type = "list"; elements = "str" }
         state = @{ type = "str"; default = "present"; choices = @("present", "absent") }
     }
     supports_check_mode = $true
@@ -19,7 +19,7 @@ $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
 $name = $module.Params.name
 $groups = $module.Params.groups
-$provider = $module.Params.provider
+$providers = $module.Params.providers
 $state = $module.Params.state
 
 $module.Result.name = $name
@@ -39,6 +39,20 @@ try {
     $groupSet = Get-ClusterGroupSet -Name $name -ErrorAction SilentlyContinue
     $setExists = ($null -ne $groupSet)
 
+    # Initialize current state variables early for accurate change detection in Check Mode
+    $currentGroups = @()
+    $currentProviders = @()
+
+    if ($setExists) {
+        if ($groupSet.GroupNames) {
+            $currentGroups = @($groupSet.GroupNames | Sort-Object)
+        }
+        $depObj = Get-ClusterGroupSetDependency -Name $name -ErrorAction SilentlyContinue
+        if ($depObj -and $depObj.ProviderSet) {
+            $currentProviders = @($depObj.ProviderSet | Sort-Object)
+        }
+    }
+
     switch ($state) {
         "present" {
             $changed = $false
@@ -52,13 +66,6 @@ try {
 
             # Manage Group Members
             if ($module.Params.ContainsKey("groups")) {
-                $currentGroups = @()
-                if ($groupSet) {
-                    if ($groupSet.GroupNames) {
-                        $currentGroups = @($groupSet.GroupNames | Sort-Object)
-                    }
-                }
-
                 $desiredGroups = @()
                 if ($null -ne $groups) {
                     $desiredGroups = @($groups | Sort-Object)
@@ -79,33 +86,25 @@ try {
                     }
                 }
             }
-            # Manage Provider Dependency
-            if ($module.Params.ContainsKey("provider")) {
-                $currentProviders = @()
-                if ($groupSet -and -not $module.CheckMode) {
-                    $depObj = Get-ClusterGroupSetDependency -Name $name -ErrorAction SilentlyContinue
-                    if ($depObj) {
-                        $currentProviders = @($depObj.ProviderSet | Sort-Object)
-                    }
+
+            # Manage Provider Dependencies
+            if ($module.Params.ContainsKey("providers")) {
+                $desiredProviders = @()
+                if ($null -ne $providers) {
+                    $desiredProviders = @($providers | Sort-Object)
                 }
 
-                if ($null -ne $provider) {
-                    if ($currentProviders -notcontains $provider) {
-                        $changed = $true
-                        if (-not $module.CheckMode) {
-                            # Add dependency
-                            Add-ClusterGroupSetDependency -Name $name -ProviderSet $provider -ErrorAction Stop
+                $providersToAdd = $desiredProviders | Where-Object { $currentProviders -notcontains $_ }
+                $providersToRemove = $currentProviders | Where-Object { $desiredProviders -notcontains $_ }
+
+                if ($providersToAdd -or $providersToRemove) {
+                    $changed = $true
+                    if (-not $module.CheckMode) {
+                        foreach ($pName in $providersToAdd) {
+                            Add-ClusterGroupSetDependency -Name $name -Provider $pName -ErrorAction Stop
                         }
-                    }
-                }
-                else {
-                    # Provider passed as null/empty - clear dependencies
-                    if ($currentProviders.Count -gt 0) {
-                        $changed = $true
-                        if (-not $module.CheckMode) {
-                            foreach ($p in $currentProviders) {
-                                Remove-ClusterGroupSetDependency -Name $name -ProviderSet $p -ErrorAction Stop
-                            }
+                        foreach ($pName in $providersToRemove) {
+                            Remove-ClusterGroupSetDependency -Name $name -Provider $pName -ErrorAction Stop
                         }
                     }
                 }
@@ -115,17 +114,8 @@ try {
 
             # Output Forecasting / Result gathering
             if ($module.CheckMode) {
-                if ($module.Params.ContainsKey("groups")) {
-                    $module.Result.groups = $desiredGroups
-                } else {
-                    $module.Result.groups = $currentGroups
-                }
-
-                if ($module.Params.ContainsKey("provider")) {
-                    $module.Result.provider = $provider
-                } else {
-                    if ($currentProviders.Count -gt 0) { $module.Result.provider = $currentProviders[0] }
-                }
+                $module.Result.groups = if ($module.Params.ContainsKey("groups")) { $desiredGroups } else { $currentGroups }
+                $module.Result.providers = if ($module.Params.ContainsKey("providers")) { $desiredProviders } else { $currentProviders }
                 $module.ExitJson()
             }
 
@@ -133,13 +123,17 @@ try {
             $finalSet = Get-ClusterGroupSet -Name $name -ErrorAction SilentlyContinue
             if ($finalSet -and $finalSet.GroupNames) {
                 $module.Result.groups = @($finalSet.GroupNames | Sort-Object)
-            } else {
+            }
+            else {
                 $module.Result.groups = @()
             }
 
             $finalDepObj = Get-ClusterGroupSetDependency -Name $name -ErrorAction SilentlyContinue
             if ($finalDepObj -and $finalDepObj.ProviderSet) {
-                $module.Result.provider = $finalDepObj.ProviderSet[0]
+                $module.Result.providers = @($finalDepObj.ProviderSet | Sort-Object)
+            }
+            else {
+                $module.Result.providers = @()
             }
         }
         "absent" {

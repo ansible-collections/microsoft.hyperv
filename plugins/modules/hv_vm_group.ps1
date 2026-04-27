@@ -28,10 +28,32 @@ $state = $module.Params.state
 $module.Result.name = $name
 $module.Result.group_type = $group_type
 
+# Validation for conflicting parameters
+if ($state -eq "present") {
+    if ($group_type -eq "VMCollectionType" -and $null -ne $group_members) {
+        $module.FailJson("Parameter 'group_members' is not valid when 'group_type' is 'VMCollectionType'.")
+    }
+    if ($group_type -eq "ManagementCollectionType" -and $null -ne $vm_members) {
+        $module.FailJson("Parameter 'vm_members' is not valid when 'group_type' is 'ManagementCollectionType'.")
+    }
+}
+
 try {
     # Check if group exists
     $group = Get-VMGroup -Name $name -ErrorAction SilentlyContinue
     $groupExists = ($null -ne $group)
+
+    # Initialize current state variables early to prevent crashes in result formatting
+    $currentVmNames = @()
+    $currentGroupNames = @()
+    if ($groupExists) {
+        if ($group.VMMembers) {
+            $currentVmNames = @($group.VMMembers.Name | Sort-Object)
+        }
+        if ($group.VMGroupMembers) {
+            $currentGroupNames = @($group.VMGroupMembers.Name | Sort-Object)
+        }
+    }
 
     switch ($state) {
         "present" {
@@ -45,7 +67,8 @@ try {
                     $module.ExitJson()
                 }
 
-                $group = New-VMGroup -Name $name -GroupType $group_type -ErrorAction Stop
+                New-VMGroup -Name $name -GroupType $group_type -ErrorAction Stop | Out-Null
+                $group = Get-VMGroup -Name $name -ErrorAction Stop
             }
             else {
                 # Verify GroupType doesn't conflict
@@ -56,11 +79,6 @@ try {
 
             # Manage VM Members
             if ($group_type -eq "VMCollectionType" -and $module.Params.ContainsKey("vm_members")) {
-                $currentVmNames = @()
-                if ($group.VMMembers) {
-                    $currentVmNames = @($group.VMMembers.Name | Sort-Object)
-                }
-                
                 # Force to array, ensuring an empty list from Ansible clears the array
                 $desiredVmNames = @()
                 if ($null -ne $vm_members) {
@@ -87,11 +105,6 @@ try {
 
             # Manage Group Members (Nested)
             if ($group_type -eq "ManagementCollectionType" -and $module.Params.ContainsKey("group_members")) {
-                $currentGroupNames = @()
-                if ($group.VMGroupMembers) {
-                    $currentGroupNames = @($group.VMGroupMembers.Name | Sort-Object)
-                }
-                
                 $desiredGroupNames = @()
                 if ($null -ne $group_members) {
                     $desiredGroupNames = @($group_members | Sort-Object)

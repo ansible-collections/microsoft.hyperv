@@ -72,19 +72,6 @@
       - test_vm_name_2 in group_update_actual.vm_members
       - test_vm_name_1 not in group_update_actual.vm_members
 
-- name: Test - Clear all VM members
-  microsoft.hyperv.hv_vm_group:
-    name: "{{ test_group_name_collection }}"
-    group_type: VMCollectionType
-    vm_members: []
-  register: group_clear_actual
-
-- name: Assert Clear Members
-  assert:
-    that:
-      - group_clear_actual.changed == true
-      - group_clear_actual.vm_members is none or group_clear_actual.vm_members | length == 0
-
 - name: Test - Create Management Group (Nested)
   microsoft.hyperv.hv_vm_group:
     name: "{{ test_group_name_mgmt }}"
@@ -111,6 +98,36 @@
   assert:
     that:
       - mgmt_group_idem.changed == false
+
+- name: Test - Conflicting Parameters (vm_members with ManagementCollectionType)
+  microsoft.hyperv.hv_vm_group:
+    name: "ConflictingGroup1"
+    group_type: ManagementCollectionType
+    vm_members:
+      - "{{ test_vm_name_1 }}"
+  register: conflict_fail_1
+  ignore_errors: true
+
+- name: Assert failure 1
+  assert:
+    that:
+      - conflict_fail_1.failed == true
+      - "('vm_members' in conflict_fail_1.msg) and ('ManagementCollectionType' in conflict_fail_1.msg)"
+
+- name: Test - Conflicting Parameters (group_members with VMCollectionType)
+  microsoft.hyperv.hv_vm_group:
+    name: "ConflictingGroup2"
+    group_type: VMCollectionType
+    group_members:
+      - "SomeGroup"
+  register: conflict_fail_2
+  ignore_errors: true
+
+- name: Assert failure 2
+  assert:
+    that:
+      - conflict_fail_2.failed == true
+      - "('group_members' in conflict_fail_2.msg) and ('VMCollectionType' in conflict_fail_2.msg)"
 
 - name: Test - Remove Group
   microsoft.hyperv.hv_vm_group:

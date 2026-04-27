@@ -1,0 +1,101 @@
+---
+- name: Test - Failure handling on standalone node
+  microsoft.hyperv.hv_cluster_node_maintenance:
+    node_name: "{{ test_node_name }}"
+    state: maintenance
+  register: drain_fail
+  ignore_errors: true
+  when: inventory_hostname == 'hyperv_test_host_2'
+
+- name: Assert failure on standalone node
+  assert:
+    that:
+      - drain_fail.failed == true
+      - "'Failover Clustering module is not available' in drain_fail.msg or 'not a member of an active Failover Cluster' in drain_fail.msg"
+  when: inventory_hostname == 'hyperv_test_host_2'
+
+- name: Test - Suspend Node (Check Mode)
+  microsoft.hyperv.hv_cluster_node_maintenance:
+    node_name: "{{ test_node_name }}"
+    state: maintenance
+    drain: false # Use false for single node cluster to prevent hanging
+  check_mode: true
+  register: drain_check
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Assert Suspend Check Mode
+  assert:
+    that:
+      - drain_check.changed == true
+      - drain_check.state == "maintenance"
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Test - Suspend Node
+  microsoft.hyperv.hv_cluster_node_maintenance:
+    node_name: "{{ test_node_name }}"
+    state: maintenance
+    drain: false
+  register: drain_actual
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Assert Suspend Actual
+  assert:
+    that:
+      - drain_actual.changed == true
+      - drain_actual.state == "maintenance"
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Test - Idempotency Suspend
+  microsoft.hyperv.hv_cluster_node_maintenance:
+    node_name: "{{ test_node_name }}"
+    state: maintenance
+  register: drain_idem
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Assert Idempotency Suspend
+  assert:
+    that:
+      - drain_idem.changed == false
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Test - Resume Node (Check Mode)
+  microsoft.hyperv.hv_cluster_node_maintenance:
+    node_name: "{{ test_node_name }}"
+    state: active
+  check_mode: true
+  register: resume_check
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Assert Resume Check Mode
+  assert:
+    that:
+      - resume_check.changed == true
+      - resume_check.state == "active"
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Test - Resume Node
+  microsoft.hyperv.hv_cluster_node_maintenance:
+    node_name: "{{ test_node_name }}"
+    state: active
+  register: resume_actual
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Assert Resume Actual
+  assert:
+    that:
+      - resume_actual.changed == true
+      - resume_actual.state == "active"
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Test - Idempotency Resume
+  microsoft.hyperv.hv_cluster_node_maintenance:
+    node_name: "{{ test_node_name }}"
+    state: active
+  register: resume_idem
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Assert Idempotency Resume
+  assert:
+    that:
+      - resume_idem.changed == false
+  when: inventory_hostname == 'hyperv_test_host'

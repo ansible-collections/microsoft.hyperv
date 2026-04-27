@@ -24,12 +24,12 @@ options:
       - A list of Virtual Machine names or Cluster Role names to include in this set.
     type: list
     elements: str
-  provider:
+  providers:
     description:
-      - The name of the provider set.
-      - Use this to create a dependency where this set depends on the C(provider) set.
-      - Can be used to establish Anti-Affinity rules.
-    type: str
+      - A list of provider set names that this set depends on.
+      - Use this to create dependencies between sets, establishing Anti-Affinity or start-ordering rules.
+    type: list
+    elements: str
   state:
     description:
       - The desired state of the cluster group set.
@@ -57,7 +57,8 @@ EXAMPLES = r'''
     groups:
       - AppVM01
       - AppVM02
-    provider: DB-Tier-Set
+    providers:
+      - DB-Tier-Set
     state: present
 '''
 
@@ -73,9 +74,10 @@ groups:
     type: list
     elements: str
     sample: ["SQLVM01", "SQLVM02"]
-provider:
-    description: The name of the provider set this set depends on.
-    returned: when state is present and configured
-    type: str
-    sample: DB-Tier-Set
+providers:
+    description: List of provider set names this set depends on.
+    returned: when state is present
+    type: list
+    elements: str
+    sample: ["DB-Tier-Set"]
 '''

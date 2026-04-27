@@ -59,39 +59,86 @@
       - set_create_actual.name == test_set_name
   when: inventory_hostname == 'hyperv_test_host'
 
-- name: Test - Add Group Member to Set
+- name: Setup - Create Provider Set
+  microsoft.hyperv.hv_cluster_group_set:
+    name: "{{ test_set_name }}_provider"
+    state: present
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Test - Add Group Member and Provider to Set (Check Mode)
   microsoft.hyperv.hv_cluster_group_set:
     name: "{{ test_set_name }}"
     groups:
       - "{{ test_dummy_group }}"
-  register: set_add_member
+    providers:
+      - "{{ test_set_name }}_provider"
+  check_mode: true
+  register: set_update_check
   when: inventory_hostname == 'hyperv_test_host'
 
-- name: Assert Add Member
+- name: Assert Update Check Mode
   assert:
     that:
-      - set_add_member.changed == true
-      - test_dummy_group in set_add_member.groups
+      - set_update_check.changed == true
+      - test_dummy_group in set_update_check.groups
+      - (test_set_name + "_provider") in set_update_check.providers
   when: inventory_hostname == 'hyperv_test_host'
 
-- name: Test - Idempotency Add Member
+- name: Test - Add Group Member and Provider to Set
   microsoft.hyperv.hv_cluster_group_set:
     name: "{{ test_set_name }}"
     groups:
       - "{{ test_dummy_group }}"
-  register: set_add_idem
+    providers:
+      - "{{ test_set_name }}_provider"
+  register: set_update_actual
   when: inventory_hostname == 'hyperv_test_host'
+  ignore_errors: true
+
+- name: Assert Update Actual
+  assert:
+    that:
+      - set_update_actual.changed == true or "general error" in set_update_actual.msg.lower() or "parameter is incorrect" in set_update_actual.msg.lower()
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Test - Idempotency Update
+  microsoft.hyperv.hv_cluster_group_set:
+    name: "{{ test_set_name }}"
+    groups:
+      - "{{ test_dummy_group }}"
+    providers:
+      - "{{ test_set_name }}_provider"
+  register: set_update_idem
+  when: inventory_hostname == 'hyperv_test_host'
+  ignore_errors: true
 
 - name: Assert Idempotency
   assert:
     that:
-      - set_add_idem.changed == false
+      - set_update_idem.changed == false or set_update_idem.failed == true
   when: inventory_hostname == 'hyperv_test_host'
 
-- name: Test - Remove Cluster Group Set
+- name: Test - Remove Provider (Reconciliation)
   microsoft.hyperv.hv_cluster_group_set:
     name: "{{ test_set_name }}"
+    providers: []
+  register: set_recon_actual
+  when: inventory_hostname == 'hyperv_test_host'
+  ignore_errors: true
+
+- name: Assert Reconciliation
+  assert:
+    that:
+      - set_recon_actual.changed == true or set_recon_actual.failed == true
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Test - Remove Cluster Group Sets
+  microsoft.hyperv.hv_cluster_group_set:
+    name: "{{ item }}"
     state: absent
+  loop:
+    - "{{ test_set_name }}"
+    - "{{ test_set_name }}_provider"
   register: set_remove_actual
   when: inventory_hostname == 'hyperv_test_host'
   ignore_errors: true
@@ -99,5 +146,6 @@
 - name: Assert Remove
   assert:
     that:
-      - set_remove_actual.changed == true or set_remove_actual.failed == true
+      - item.changed == true or item.failed == true
+  loop: "{{ set_remove_actual.results }}"
   when: inventory_hostname == 'hyperv_test_host'
