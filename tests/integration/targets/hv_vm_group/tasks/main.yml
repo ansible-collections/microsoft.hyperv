@@ -1,0 +1,66 @@
+---
+- name: Setup - Ensure RSAT-Clustering is present (Test Host 1)
+  ansible.windows.win_powershell:
+    script: |
+      if (-not (Get-WindowsFeature -Name RSAT-Clustering-PowerShell).Installed) {
+          Install-WindowsFeature -Name RSAT-Clustering-PowerShell -IncludeManagementTools | Out-Null
+      }
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Setup - Create Fresh Single-Node Cluster (Test Host 1)
+  ansible.windows.win_powershell:
+    script: |
+      if (-not (Get-Cluster -ErrorAction SilentlyContinue)) {
+          New-Cluster -Name "AnsibleTestClus" -Node $env:COMPUTERNAME -NoStorage -AdministrativeAccessPoint DNS -Force | Out-Null
+      }
+  when: inventory_hostname == 'hyperv_test_host'
+
+- name: Define test VM and group names
+  set_fact:
+    test_vm_name_1: "AnsibleGroupVM1_{{ 99999 | random }}"
+    test_vm_name_2: "AnsibleGroupVM2_{{ 99999 | random }}"
+    test_group_name_collection: "AnsibleCollectionGroup_{{ 99999 | random }}"
+    test_group_name_mgmt: "AnsibleMgmtGroup_{{ 99999 | random }}"
+
+- block:
+    - name: Setup - Create temporary dummy VMs
+      microsoft.hyperv.hv_vm:
+        name: "{{ item }}"
+        state: present
+        generation: 2
+        memory_startup_bytes: "256MB"
+      loop:
+        - "{{ test_vm_name_1 }}"
+        - "{{ test_vm_name_2 }}"
+
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove groups
+      microsoft.hyperv.hv_vm_group:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ test_group_name_collection }}"
+        - "{{ test_group_name_mgmt }}"
+      ignore_errors: true
+
+    - name: Teardown - Remove temporary dummy VMs
+      microsoft.hyperv.hv_vm:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ test_vm_name_1 }}"
+        - "{{ test_vm_name_2 }}"
+      ignore_errors: true
+
+    - name: Teardown - Remove Cluster (Leave Clean Env)
+      ansible.windows.win_powershell:
+        script: |
+          if (Get-Cluster -ErrorAction SilentlyContinue) {
+              Get-ClusterGroup | Where-Object { $_.IsCoreGroup -eq $false } | Remove-ClusterGroup -RemoveResources -Force -ErrorAction SilentlyContinue
+              Remove-Cluster -Force | Out-Null
+          }
+      when: inventory_hostname == 'hyperv_test_host'
+      ignore_errors: true

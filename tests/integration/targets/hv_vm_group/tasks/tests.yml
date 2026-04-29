@@ -1,0 +1,141 @@
+---
+- name: Test - Create VM Collection Group (Check Mode)
+  microsoft.hyperv.hv_vm_group:
+    name: "{{ test_group_name_collection }}"
+    group_type: VMCollectionType
+    vm_members:
+      - "{{ test_vm_name_1 }}"
+  check_mode: true
+  register: group_create_check
+
+- name: Assert Create Check Mode
+  assert:
+    that:
+      - group_create_check.changed == true
+      - group_create_check.name == test_group_name_collection
+
+- name: Test - Create VM Collection Group
+  microsoft.hyperv.hv_vm_group:
+    name: "{{ test_group_name_collection }}"
+    group_type: VMCollectionType
+    vm_members:
+      - "{{ test_vm_name_1 }}"
+  register: group_create_actual
+
+- name: Assert Create Actual
+  assert:
+    that:
+      - group_create_actual.changed == true
+      - test_vm_name_1 in group_create_actual.vm_members
+
+- name: Test - Idempotency Add Member
+  microsoft.hyperv.hv_vm_group:
+    name: "{{ test_group_name_collection }}"
+    group_type: VMCollectionType
+    vm_members:
+      - "{{ test_vm_name_1 }}"
+  register: group_create_idem
+
+- name: Assert Idempotency
+  assert:
+    that:
+      - group_create_idem.changed == false
+
+- name: Test - Update VM Members (Check Mode)
+  microsoft.hyperv.hv_vm_group:
+    name: "{{ test_group_name_collection }}"
+    group_type: VMCollectionType
+    vm_members:
+      - "{{ test_vm_name_2 }}"
+  check_mode: true
+  register: group_update_check
+
+- name: Assert Update Check Mode
+  assert:
+    that:
+      - group_update_check.changed == true
+      - test_vm_name_2 in group_update_check.vm_members
+      - test_vm_name_1 not in group_update_check.vm_members
+
+- name: Test - Update VM Members (Add/Remove)
+  microsoft.hyperv.hv_vm_group:
+    name: "{{ test_group_name_collection }}"
+    group_type: VMCollectionType
+    vm_members:
+      - "{{ test_vm_name_2 }}"
+  register: group_update_actual
+
+- name: Assert Update Actual
+  assert:
+    that:
+      - group_update_actual.changed == true
+      - test_vm_name_2 in group_update_actual.vm_members
+      - test_vm_name_1 not in group_update_actual.vm_members
+
+- name: Test - Create Management Group (Nested)
+  microsoft.hyperv.hv_vm_group:
+    name: "{{ test_group_name_mgmt }}"
+    group_type: ManagementCollectionType
+    group_members:
+      - "{{ test_group_name_collection }}"
+  register: mgmt_group_actual
+
+- name: Assert Management Group
+  assert:
+    that:
+      - mgmt_group_actual.changed == true
+      - test_group_name_collection in mgmt_group_actual.group_members
+
+- name: Test - Idempotency Management Group
+  microsoft.hyperv.hv_vm_group:
+    name: "{{ test_group_name_mgmt }}"
+    group_type: ManagementCollectionType
+    group_members:
+      - "{{ test_group_name_collection }}"
+  register: mgmt_group_idem
+
+- name: Assert Idempotency Management Group
+  assert:
+    that:
+      - mgmt_group_idem.changed == false
+
+- name: Test - Conflicting Parameters (vm_members with ManagementCollectionType)
+  microsoft.hyperv.hv_vm_group:
+    name: "ConflictingGroup1"
+    group_type: ManagementCollectionType
+    vm_members:
+      - "{{ test_vm_name_1 }}"
+  register: conflict_fail_1
+  ignore_errors: true
+
+- name: Assert failure 1
+  assert:
+    that:
+      - conflict_fail_1.failed == true
+      - "('vm_members' in conflict_fail_1.msg) and ('ManagementCollectionType' in conflict_fail_1.msg)"
+
+- name: Test - Conflicting Parameters (group_members with VMCollectionType)
+  microsoft.hyperv.hv_vm_group:
+    name: "ConflictingGroup2"
+    group_type: VMCollectionType
+    group_members:
+      - "SomeGroup"
+  register: conflict_fail_2
+  ignore_errors: true
+
+- name: Assert failure 2
+  assert:
+    that:
+      - conflict_fail_2.failed == true
+      - "('group_members' in conflict_fail_2.msg) and ('VMCollectionType' in conflict_fail_2.msg)"
+
+- name: Test - Remove Group
+  microsoft.hyperv.hv_vm_group:
+    name: "{{ test_group_name_mgmt }}"
+    state: absent
+  register: mgmt_group_remove
+
+- name: Assert Remove
+  assert:
+    that:
+      - mgmt_group_remove.changed == true
