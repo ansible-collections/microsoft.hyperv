@@ -16,69 +16,88 @@ $spec = @{
         default_storage_location = @{ type = "str" }
         allow_any_server = @{ type = "bool" }
         authorized_servers = @{ type = "list"; elements = "dict"; options = @{
-            server = @{ type = "str"; required = $true }
-            trust_group = @{ type = "str" }
-            storage_location = @{ type = "str"; required = $true }
-            state = @{ type = "str"; default = "present"; choices = @("present", "absent") }
-        }}
+                server = @{ type = "str"; required = $true }
+                trust_group = @{ type = "str" }
+                storage_location = @{ type = "str" }
+                state = @{ type = "str"; default = "present"; choices = @("present", "absent") }
+            }
         }
-        supports_check_mode = $true
-        }
+    }
+    supports_check_mode = $true
+}
 
-        $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
+$module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
-        $auth_servers = $module.Params.authorized_servers
+$auth_servers = $module.Params.authorized_servers
 
-        # Map Ansible parameters to PowerShell Set-VMReplicationServer parameters
-        $propertyMap = @(
-        @{ Param = "replication_enabled"; Property = "ReplicationEnabled"; Type = "bool" }
-        @{ Param = "allowed_authentication_type"; Property = "AllowedAuthenticationType"; Type = "enum" }
-        @{ Param = "certificate_thumbprint"; Property = "CertificateThumbprint"; Type = "string" }
-        @{ Param = "kerberos_port"; Property = "KerberosAuthenticationPort"; Type = "int" }
-        @{ Param = "certificate_port"; Property = "CertificateAuthenticationPort"; Type = "int" }
-        @{ Param = "default_storage_location"; Property = "DefaultStorageLocation"; Type = "string" }
-        @{ Param = "allow_any_server"; Property = "ReplicationAllowedFromAnyServer"; Type = "bool" }
-        )
+# Map Ansible parameters to PowerShell Set-VMReplicationServer parameters
+$propertyMap = @(
+    @{ Param = "replication_enabled"; Property = "ReplicationEnabled"; Type = "bool" }
+    @{ Param = "allowed_authentication_type"; Property = "AllowedAuthenticationType"; Type = "enum" }
+    @{ Param = "certificate_thumbprint"; Property = "CertificateThumbprint"; Type = "string" }
+    @{ Param = "kerberos_port"; Property = "KerberosAuthenticationPort"; Type = "int" }
+    @{ Param = "certificate_port"; Property = "CertificateAuthenticationPort"; Type = "int" }
+    @{ Param = "default_storage_location"; Property = "DefaultStorageLocation"; Type = "string" }
+    @{ Param = "allow_any_server"; Property = "ReplicationAllowedFromAnyServer"; Type = "bool" }
+)
 
-        try {
-        $server = Get-VMReplicationServer -ErrorAction Stop
+try {
+    $server = Get-VMReplicationServer -ErrorAction Stop
 
-        # 1. Manage Core Server Properties
-        $changed = Test-HyperVPropertiesChanged -PropertyMap $propertyMap -CurrentObject $server -AnsibleParams $module.Params
+    # 1. Manage Core Server Properties
+    $changed = Test-HyperVPropertiesChanged -PropertyMap $propertyMap -CurrentObject $server -AnsibleParams $module.Params
 
-        # Validation
-        $targetAuthType = if ($module.Params.ContainsKey("allowed_authentication_type") -and $null -ne $module.Params.allowed_authentication_type) { $module.Params.allowed_authentication_type } else { $server.AllowedAuthenticationType.ToString() }
-        if ($targetAuthType -match "Certificate") {
+    # Validation
+    $targetAuthType = $server.AllowedAuthenticationType.ToString()
+    if ($module.Params.ContainsKey("allowed_authentication_type") -and $null -ne $module.Params.allowed_authentication_type) {
+        $targetAuthType = $module.Params.allowed_authentication_type
+    }
+
+    if ($targetAuthType -match "Certificate") {
         # If setting to certificate, thumbprint is usually required unless previously set
         $hasThumbprint = ($null -ne $module.Params.certificate_thumbprint -and $module.Params.certificate_thumbprint -ne "")
         if (-not $hasThumbprint -and -not $server.CertificateThumbprint) {
             $module.FailJson("A 'certificate_thumbprint' is required when 'allowed_authentication_type' uses Certificates.")
         }
+    }
+
+    if ($module.Params.ContainsKey("allow_any_server") -and $module.Params.allow_any_server -eq $true) {
+        if ($module.Params.ContainsKey("authorized_servers") -and $null -ne $module.Params.authorized_servers) {
+            # Users can pass an empty array to clear, but they cannot pass active entries while allow_any_server is true.
+            $activeEntries = $module.Params.authorized_servers | Where-Object { $_.state -eq "present" }
+            if ($activeEntries) {
+                $errMsg = "Cannot configure specific 'authorized_servers' when 'allow_any_server' is set to true."
+                $module.FailJson("$errMsg This is a logical conflict.")
+            }
         }
+    }
 
-        # 2. Manage Authorization Entries (Allowed Servers)
-        $authChanged = $false
-        $currentEntries = @(Get-VMReplicationAuthorizationEntry -ErrorAction SilentlyContinue)
+    # 2. Manage Authorization Entries (Allowed Servers)
+    $authChanged = $false
+    $currentEntries = @(Get-VMReplicationAuthorizationEntry -ErrorAction SilentlyContinue)
 
-        $entriesToAddOrUpdate = @()
-        $entriesToRemove = @()
+    $entriesToAddOrUpdate = @()
+    $entriesToRemove = @()
 
-        if ($module.Params.ContainsKey("authorized_servers") -and $null -ne $auth_servers) {
+    if ($module.Params.ContainsKey("authorized_servers") -and $null -ne $auth_servers) {
         foreach ($auth in $auth_servers) {
             $existing = $currentEntries | Where-Object { $_.AllowedPrimaryServer -eq $auth.server } | Select-Object -First 1
 
             if ($auth.state -eq "present") {
+                if (-not $auth.ContainsKey("storage_location") -or $null -eq $auth.storage_location -or $auth.storage_location -eq "") {
+                    $module.FailJson("The 'storage_location' parameter is required for authorized_server '$($auth.server)' when state is 'present'.")
+                }
+
                 if (-not $existing) {
                     $entriesToAddOrUpdate += $auth
                     $authChanged = $true
-                } else {
+                }
+                else {
                     # Check if trust group or storage location needs updating
                     $trustDiffers = $false
-                    if ($module.Params.ContainsKey("authorized_servers")) {
-                        # Normalize null and empty to compare consistently
-                        $requestedTrust = if ($null -ne $auth.trust_group) { $auth.trust_group } else { "" }
+                    if ($null -ne $auth.trust_group) {
                         $currentTrust = if ($null -ne $existing.TrustGroup) { $existing.TrustGroup } else { "" }
-                        if ($requestedTrust -ne $currentTrust) {
+                        if ($auth.trust_group -ne $currentTrust) {
                             $trustDiffers = $true
                         }
                     }
@@ -89,7 +108,9 @@ $spec = @{
                         $authChanged = $true
                     }
                 }
-            } else {                if ($existing) {
+            }
+            else {
+                if ($existing) {
                     $entriesToRemove += $existing
                     $authChanged = $true
                 }
@@ -124,7 +145,8 @@ $spec = @{
                         trust_group = if ($null -ne $willUpdate.trust_group) { $willUpdate.trust_group } else { $ce.TrustGroup }
                         storage_location = $willUpdate.storage_location
                     }
-                } else {
+                }
+                else {
                     $forecastEntries += @{
                         server = $ce.AllowedPrimaryServer
                         trust_group = $ce.TrustGroup
@@ -152,7 +174,12 @@ $spec = @{
     # 4. Actual Execution
     if ($changed) {
         $setParams = Get-HyperVParametersFromMap -PropertyMap $propertyMap -AnsibleParams $module.Params
-        Set-VMReplicationServer @setParams -Force -ErrorAction Stop | Out-Null
+        try {
+            Set-VMReplicationServer @setParams -Force -ErrorAction Stop | Out-Null
+        }
+        catch [Microsoft.HyperV.PowerShell.VirtualizationException], [CimException] {
+            $module.FailJson("Failed to apply core Replication Server settings. Details: $($_.Exception.Message)")
+        }
     }
 
     if ($authChanged) {
@@ -170,7 +197,8 @@ $spec = @{
                     }
                     if ($null -ne $entry.trust_group) { $setAuthParams.TrustGroup = $entry.trust_group }
                     Set-VMReplicationAuthorizationEntry @setAuthParams | Out-Null
-                } else {
+                }
+                else {
                     $newAuthParams = @{
                         AllowedPrimaryServer = $entry.server
                         ReplicaStorageLocation = $entry.storage_location
@@ -180,8 +208,12 @@ $spec = @{
                     New-VMReplicationAuthorizationEntry @newAuthParams | Out-Null
                 }
             }
-        } catch [Microsoft.HyperV.PowerShell.VirtualizationException], [CimException] {
-            $module.FailJson("A concurrency error occurred while updating authorization entries. The Hyper-V WMI provider may be busy. Details: $($_.Exception.Message)")
+        }
+        catch [Microsoft.HyperV.PowerShell.VirtualizationException], [CimException] {
+            $module.FailJson(
+                "A concurrency error occurred while updating authorization entries. " +
+                "The Hyper-V WMI provider may be busy. Details: $($_.Exception.Message)"
+            )
         }
     }
 
@@ -200,7 +232,8 @@ $spec = @{
             }
         }
         $module.Result.authorized_servers = $finalAuth
-    } else {
+    }
+    else {
         # Explicitly set an empty typed array to avoid Ansible.Basic converting it to null
         # or creating a Dictionary artifact when returning empty lists from Windows.
         $module.Result.authorized_servers = New-Object object[] 0

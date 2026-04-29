@@ -1,0 +1,72 @@
+---
+- name: Test - Enable Replication (Check Mode)
+  microsoft.hyperv.hv_replication:
+    vm_name: "{{ test_vm_rep }}"
+    replica_server: "{{ test_replica_target }}"
+    authentication_type: Kerberos
+    frequency_sec: 300
+    state: present
+  check_mode: true
+  register: rep_enable_check
+
+- name: Assert Enable Check Mode
+  assert:
+    that:
+      - rep_enable_check.changed == true
+      - rep_enable_check.replica_server == test_replica_target
+
+- name: Test - Enable Replication
+  microsoft.hyperv.hv_replication:
+    vm_name: "{{ test_vm_rep }}"
+    replica_server: "{{ test_replica_target }}"
+    authentication_type: Kerberos
+    frequency_sec: 300
+    state: present
+  register: rep_enable_actual
+  ignore_errors: true
+
+- name: Assert Enable Actual (Expect Environmental Failure)
+  assert:
+    that:
+      - rep_enable_actual.failed == true
+      - "'fully qualified domain name' in rep_enable_actual.msg or 'SPN' in rep_enable_actual.msg or 'failed to resolve' in rep_enable_actual.msg"
+
+- name: Test - Change Replica Destination Server
+  microsoft.hyperv.hv_replication:
+    vm_name: "{{ test_vm_rep }}"
+    replica_server: "different-server.contoso.local"
+    authentication_type: Kerberos
+    frequency_sec: 900
+    state: present
+  register: rep_change_dest
+  ignore_errors: true
+
+- name: Assert Change Replica Destination Server
+  assert:
+    that:
+      - rep_change_dest.failed == true
+      - "'fully qualified domain name' in rep_change_dest.msg or 'failed to resolve' in rep_change_dest.msg"
+
+- name: Test - Disable Replication (Absent state, should return changed false as it was never successfully enabled)
+  microsoft.hyperv.hv_replication:
+    vm_name: "{{ test_vm_rep }}"
+    state: absent
+  register: rep_disable_actual
+
+- name: Assert Disable
+  assert:
+    that:
+      - rep_disable_actual.changed == false
+
+- name: Test - Validation Failure (Missing Replica Server)
+  microsoft.hyperv.hv_replication:
+    vm_name: "{{ test_vm_rep }}"
+    state: present
+  register: val_fail
+  ignore_errors: true
+
+- name: Assert Validation Failure
+  assert:
+    that:
+      - val_fail.failed == true
+      - "'replica_server\\' parameter is required' in val_fail.msg"

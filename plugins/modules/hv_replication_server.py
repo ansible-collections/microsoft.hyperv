@@ -68,7 +68,6 @@ options:
       storage_location:
         description: A specific storage path for this authorized server. Overrides the C(default_storage_location).
         type: str
-        required: true
       state:
         description: Whether this authorization entry should be present or absent.
         type: str
