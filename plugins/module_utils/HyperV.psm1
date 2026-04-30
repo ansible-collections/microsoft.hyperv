@@ -349,7 +349,7 @@ Function ConvertTo-VMNote {
     process {
         $TAG_PREFIX = "[AnsibleTag]"
         $lines = @()
-        
+
         if ($null -ne $NoteData.Notes -and $NoteData.Notes -ne "") {
             $lines += $NoteData.Notes
         }
@@ -365,4 +365,5 @@ Function ConvertTo-VMNote {
     }
 }
 
-Export-ModuleMember -Function Convert-ToByte, Get-HyperVParametersFromMap, Test-HyperVPropertiesChanged, Set-HyperVResultFromMap, Test-IPInCidr, ConvertFrom-VMNote, ConvertTo-VMNote
+Export-ModuleMember -Function Convert-ToByte, Get-HyperVParametersFromMap, Test-HyperVPropertiesChanged, Set-HyperVResultFromMap, `
+    Test-IPInCidr, ConvertFrom-VMNote, ConvertTo-VMNote

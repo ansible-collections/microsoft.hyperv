@@ -25,45 +25,46 @@ $state = $module.Params.state
 $notes = $module.Params.notes
 
 if ($null -ne $module.Params.memory_startup_bytes) {
-$module.Params.memory_startup_bytes = Convert-ToByte -SizeString $module.Params.memory_startup_bytes
+    $module.Params.memory_startup_bytes = Convert-ToByte -SizeString $module.Params.memory_startup_bytes
 }
 
 $module.Result.name = $name
 
 # Mapping for New-VM parameters
 $vmCreateMap = @(
-@{ Param = "generation"; Property = "Generation" }
-@{ Param = "memory_startup_bytes"; Property = "MemoryStartupBytes" }
-@{ Param = "boot_device"; Property = "BootDevice" }
+    @{ Param = "generation"; Property = "Generation" }
+    @{ Param = "memory_startup_bytes"; Property = "MemoryStartupBytes" }
+    @{ Param = "boot_device"; Property = "BootDevice" }
 )
 
 try {
-$vm = Get-VM -Name $name -ErrorAction SilentlyContinue
+    $vm = Get-VM -Name $name -ErrorAction SilentlyContinue
 
-switch ($state) {
-"present" {
-    $changed = $false
+    switch ($state) {
+        "present" {
+            $changed = $false
 
-    if (-not $vm) {
-        $changed = $true
-        if (-not $module.CheckMode) {
-            $cmdParams = @{ Name = $name }
-            $cmdParams += Get-HyperVParametersFromMap -PropertyMap $vmCreateMap -AnsibleParams $module.Params
+            if (-not $vm) {
+                $changed = $true
+                if (-not $module.CheckMode) {
+                    $cmdParams = @{ Name = $name }
+                    $cmdParams += Get-HyperVParametersFromMap -PropertyMap $vmCreateMap -AnsibleParams $module.Params
 
-            New-VM @cmdParams | Out-Null
-            $vm = Get-VM -Name $name -ErrorAction Stop
-        }
-    }
+                    New-VM @cmdParams | Out-Null
+                    $vm = Get-VM -Name $name -ErrorAction Stop
+                }
+            }
             # Manage Notes (Tag-Safe)
             if ($module.Params.ContainsKey("notes")) {
                 # Fetch current state including tags
                 $currentNotesData = ConvertFrom-VMNote -VM $vm
                 $currentRawNotes = $currentNotesData.Notes
 
-                # Normalize null/empty notes to empty string for comparison
-                $desiredRawNotes = if ($null -ne $notes) { $notes } else { "" }
+                # Normalize null/empty notes to empty string, and standardize line endings for comparison
+                $desiredRawNotes = if ($null -ne $notes) { $notes -replace "`r`n", "`n" } else { "" }
+                $currentNormalized = if ($null -ne $currentRawNotes) { $currentRawNotes -replace "`r`n", "`n" } else { "" }
 
-                if ($currentRawNotes -ne $desiredRawNotes) {
+                if ($currentNormalized -ne $desiredRawNotes) {
                     $changed = $true
                     if (-not $module.CheckMode) {
                         $currentNotesData.Notes = $desiredRawNotes
@@ -72,7 +73,6 @@ switch ($state) {
                     }
                 }
             }
-
             $module.Result.changed = $changed
             $module.Result.state = "present"
 

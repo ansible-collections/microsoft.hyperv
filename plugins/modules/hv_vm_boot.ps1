@@ -115,10 +115,18 @@ try {
         if ($null -ne $module.Params.boot_order) {
             $currentBootOrder = $fw.BootOrder
 
-            # Map friendly names to objects
             $desiredTypeOrder = @($module.Params.boot_order)
             $newBootOrder = @()
 
+            # Pass 1: If 'File' is NOT explicitly requested, preserve any existing OS-injected 'File' entries at the top.
+            if ($desiredTypeOrder -notcontains "File") {
+                $fileMatches = $currentBootOrder | Where-Object { $_.BootType.ToString() -eq "File" -or $_.Description -like "*File*" }
+                if ($fileMatches) {
+                    $newBootOrder += @($fileMatches)
+                }
+            }
+
+            # Pass 2: Append requested devices in exact order
             foreach ($type in $desiredTypeOrder) {
                 $match = $currentBootOrder | Where-Object { $_.Description -like "*$type*" }
                 if ($match) {
@@ -126,12 +134,7 @@ try {
                 }
             }
 
-            # Append remaining
-            foreach ($existing in $currentBootOrder) {
-                if ($newBootOrder.FirmwarePath -notcontains $existing.FirmwarePath) {
-                    $newBootOrder += $existing
-                }
-            }
+            # We DO NOT append unlisted standard devices (SCSI, DVD, Network). They are dropped.
 
             # Compare FirmwarePath for change
             $currPaths = @($currentBootOrder.FirmwarePath) -join ","
