@@ -1,0 +1,157 @@
+---
+- name: Test - Enable Replica Server (Check Mode)
+  microsoft.hyperv.hv_replication_server:
+    replication_enabled: true
+    allowed_authentication_type: Kerberos
+    kerberos_port: 8080
+    allow_any_server: true
+    default_storage_location: "C:\\Users\\Public\\Documents\\Hyper-V\\Virtual hard disks"
+  check_mode: true
+  register: rep_enable_check
+
+- name: Assert Enable Check Mode
+  assert:
+    that:
+      - rep_enable_check.changed == true
+      - rep_enable_check.replication_enabled == true
+      - rep_enable_check.allowed_authentication_type == "Kerberos"
+      - rep_enable_check.kerberos_port == 8080
+
+- name: Test - Enable Replica Server
+  microsoft.hyperv.hv_replication_server:
+    replication_enabled: true
+    allowed_authentication_type: Kerberos
+    kerberos_port: 8080
+    allow_any_server: true
+    default_storage_location: "C:\\Users\\Public\\Documents\\Hyper-V\\Virtual hard disks"
+  register: rep_enable_actual
+
+- name: Assert Enable Actual
+  assert:
+    that:
+      - rep_enable_actual.changed == true
+      - rep_enable_actual.replication_enabled == true
+      - rep_enable_actual.allowed_authentication_type == "Kerberos"
+      - rep_enable_actual.kerberos_port == 8080
+
+- name: Test - Idempotency Core Settings
+  microsoft.hyperv.hv_replication_server:
+    replication_enabled: true
+    allowed_authentication_type: Kerberos
+    kerberos_port: 8080
+    allow_any_server: true
+    default_storage_location: "C:\\Users\\Public\\Documents\\Hyper-V\\Virtual hard disks"
+  register: rep_enable_idem
+
+- name: Assert Idempotency Core
+  assert:
+    that:
+      - rep_enable_idem.changed == false
+
+- name: Test - Configure Authorization Entries (Check Mode)
+  microsoft.hyperv.hv_replication_server:
+    allow_any_server: false
+    authorized_servers:
+      - server: "primary-01.contoso.local"
+        trust_group: "Test-Group"
+        storage_location: "C:\\Users\\Public\\Documents\\Hyper-V\\Virtual hard disks"
+        state: present
+      - server: "primary-02.contoso.local"
+        trust_group: "Test-Group"
+        storage_location: "C:\\Users\\Public\\Documents\\Hyper-V\\Virtual hard disks"
+        state: present
+  check_mode: true
+  register: auth_check
+
+- name: Assert Authorization Check Mode
+  assert:
+    that:
+      - auth_check.changed == true
+      - auth_check.authorized_servers | length == 3
+
+- name: Test - Configure Authorization Entries (Strict Mode)
+  microsoft.hyperv.hv_replication_server:
+    allow_any_server: false
+    authorized_servers:
+      - server: "primary-01.contoso.local"
+        trust_group: "Test-Group"
+        storage_location: "C:\\Users\\Public\\Documents\\Hyper-V\\Virtual hard disks"
+        state: present
+      - server: "primary-02.contoso.local"
+        trust_group: "Test-Group"
+        storage_location: "C:\\Users\\Public\\Documents\\Hyper-V\\Virtual hard disks"
+        state: present
+  register: auth_actual
+
+- name: Assert Authorization
+  assert:
+    that:
+      - auth_actual.changed == true
+      - auth_actual.allow_any_server == false
+      - auth_actual.authorized_servers | length == 2
+      - auth_actual.authorized_servers[0].server == "primary-01.contoso.local"
+      - auth_actual.authorized_servers[1].server == "primary-02.contoso.local"
+
+- name: Test - Update Authorization Entry (Multiple)
+  microsoft.hyperv.hv_replication_server:
+    allow_any_server: false
+    authorized_servers:
+      - server: "primary-01.contoso.local"
+        trust_group: "Updated-Group"
+        storage_location: "C:\\Users\\Public\\Documents\\Hyper-V\\Virtual hard disks"
+        state: present
+      - server: "primary-02.contoso.local"
+        storage_location: ""
+        state: absent
+  register: auth_update
+
+- name: Assert Update Authorization
+  assert:
+    that:
+      - auth_update.changed == true
+      - auth_update.authorized_servers | length == 1
+      - auth_update.authorized_servers[0].trust_group == "Updated-Group"
+
+- name: Test - Idempotency Update Authorization Entry
+  microsoft.hyperv.hv_replication_server:
+    allow_any_server: false
+    authorized_servers:
+      - server: "primary-01.contoso.local"
+        trust_group: "Updated-Group"
+        storage_location: "C:\\Users\\Public\\Documents\\Hyper-V\\Virtual hard disks"
+        state: present
+      - server: "primary-02.contoso.local"
+        storage_location: "C:\\Dummy"
+        state: absent
+  register: auth_update_idem
+
+- name: Assert Idempotency Update Authorization
+  assert:
+    that:
+      - auth_update_idem.changed == false
+
+- name: Test - Remove Authorization Entry
+  microsoft.hyperv.hv_replication_server:
+    authorized_servers:
+      - server: "primary-01.contoso.local"
+        storage_location: "C:\\Dummy"
+        state: absent
+  register: auth_remove
+
+- name: Assert Remove Authorization
+  assert:
+    that:
+      - auth_remove.changed == true
+      - (auth_remove.authorized_servers | length == 0) or (auth_remove.authorized_servers.Count is defined and auth_remove.authorized_servers.Count == 0)
+
+- name: Test - Validation Failure (Certificate Thumbprint)
+  microsoft.hyperv.hv_replication_server:
+    allowed_authentication_type: Certificate
+  register: cert_fail
+  ignore_errors: true
+
+- name: Assert Validation Failure
+  assert:
+    that:
+      - cert_fail.failed == true
+      - "'A \\'certificate_thumbprint\\' is required' in cert_fail.msg"

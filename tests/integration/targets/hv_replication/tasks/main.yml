@@ -1,0 +1,66 @@
+---
+- name: Define test variables
+  set_fact:
+    test_vm_rep: "AnsibleRepVM_{{ 99999 | random }}"
+    test_vhd_path: "C:\\Users\\Public\\Documents\\Hyper-V\\Virtual hard disks\\AnsibleRepVM_{{ 99999 | random }}.vhdx"
+
+- name: Get actual Windows Computer Name
+  ansible.windows.win_powershell:
+    script: "Return $env:COMPUTERNAME"
+  register: comp_name
+
+- name: Set test node name
+  set_fact:
+    test_node_name: "{{ comp_name.output[0] }}"
+
+- name: Set cross-host replica target
+  set_fact:
+    test_replica_target: "{{ '10.46.109.1' if inventory_hostname == 'hyperv_test_host' else '10.46.109.224' }}"
+
+- block:
+    - name: Setup - Enable local Replication Server
+      microsoft.hyperv.hv_replication_server:
+        replication_enabled: true
+        allowed_authentication_type: Kerberos
+        kerberos_port: 80
+        allow_any_server: true
+        default_storage_location: "C:\\Users\\Public\\Documents\\Hyper-V\\Virtual hard disks"
+
+    - name: Setup - Create dummy VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_rep }}"
+        state: present
+        generation: 2
+
+    - name: Setup - Create dummy VHD
+      ansible.windows.win_powershell:
+        script: |
+          New-VHD -Path "{{ test_vhd_path }}" -SizeBytes 1GB | Out-Null
+          Add-VMHardDiskDrive -VMName "{{ test_vm_rep }}" -Path "{{ test_vhd_path }}" | Out-Null
+
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove Replication
+      microsoft.hyperv.hv_replication:
+        vm_name: "{{ test_vm_rep }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Teardown - Remove dummy VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_rep }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Teardown - Remove dummy VHD
+      ansible.windows.win_file:
+        path: "{{ test_vhd_path }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Teardown - Disable Replication Server
+      microsoft.hyperv.hv_replication_server:
+        replication_enabled: false
+      ignore_errors: true

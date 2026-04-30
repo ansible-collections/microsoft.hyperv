@@ -1,0 +1,25 @@
+---
+- name: Setup - Ensure Replica Server is pristine
+  microsoft.hyperv.hv_replication_server:
+    replication_enabled: false
+  ignore_errors: true
+
+- name: Setup - Clear Authorization Entries
+  ansible.windows.win_powershell:
+    script: |
+      Get-VMReplicationAuthorizationEntry -ErrorAction SilentlyContinue | Remove-VMReplicationAuthorizationEntry -ErrorAction SilentlyContinue
+  ignore_errors: true
+
+- name: Run tests
+  ansible.builtin.include_tasks: tests.yml
+
+- name: Teardown - Disable Replication Server
+  microsoft.hyperv.hv_replication_server:
+    replication_enabled: false
+  ignore_errors: true
+
+- name: Teardown - Remove Authorization Entries
+  ansible.windows.win_powershell:
+    script: |
+      Get-VMReplicationAuthorizationEntry -ErrorAction SilentlyContinue | Remove-VMReplicationAuthorizationEntry -ErrorAction SilentlyContinue
+  ignore_errors: true
