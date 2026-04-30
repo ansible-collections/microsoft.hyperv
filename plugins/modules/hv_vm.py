@@ -47,17 +47,32 @@ options:
       - Maps to the BootDevice parameter in New-VM.
     type: str
     choices: [ CD, Floppy, IDE, LegacyNetworkAdapter, NetworkAdapter, VHD ]
+  notes:
+    description:
+      - The ad-hoc informational notes for the virtual machine.
+      - This maps to the Notes property of the VM.
+      - Note that if you use the C(hv_vm_tag) module, those tags are also stored in the Notes field.
+        The C(hv_vm) module handles this field in a tag-safe manner, preserving existing tags when updating notes.
+    type: str
 author:
   - Ansible Cloud Team (@ansible)
 '''
 
 EXAMPLES = r'''
-- name: Create a Gen2 VM with 4GB RAM
+- name: Create a Gen2 VM with 4GB RAM and custom notes
   microsoft.hyperv.hv_vm:
     name: Web01
     state: present
     generation: 2
     memory_startup_bytes: 4GB
+    notes: |
+      This is a production web server.
+      Managed by Ansible.
+
+- name: Update notes for an existing VM
+  microsoft.hyperv.hv_vm:
+    name: Web01
+    notes: "New notes content"
 
 - name: Remove a VM
   microsoft.hyperv.hv_vm:
@@ -76,4 +91,9 @@ state:
     returned: always
     type: str
     sample: present
+notes:
+    description: The current notes of the virtual machine.
+    returned: when state is present
+    type: str
+    sample: "This is a production web server."
 '''

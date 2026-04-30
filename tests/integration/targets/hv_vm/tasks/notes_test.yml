@@ -1,0 +1,100 @@
+---
+# 5. VM Notes Management (Issue #31)
+- name: Define test VM name (Notes)
+  set_fact:
+    test_vm_notes: "AnsibleTest_Notes_{{ 99999 | random }}"
+
+- block:
+    - name: Create VM with initial notes
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_notes }}"
+        state: present
+        notes: "Initial test notes"
+      register: notes_create
+
+    - name: Assert notes creation
+      assert:
+        that:
+          - notes_create.changed == true
+          - notes_create.notes == "Initial test notes"
+
+    - name: Update notes (Check Mode)
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_notes }}"
+        state: present
+        notes: "Updated check mode notes"
+      check_mode: true
+      register: notes_check
+
+    - name: Assert notes check mode
+      assert:
+        that:
+          - notes_check.changed == true
+          - notes_check.notes == "Updated check mode notes"
+
+    - name: Update notes (Actual)
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_notes }}"
+        state: present
+        notes: "Updated actual notes"
+      register: notes_update
+
+    - name: Assert notes update
+      assert:
+        that:
+          - notes_update.changed == true
+          - notes_update.notes == "Updated actual notes"
+
+    - name: Update notes again (Idempotency)
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_notes }}"
+        state: present
+        notes: "Updated actual notes"
+      register: notes_idem
+
+    - name: Assert notes idempotency
+      assert:
+        that:
+          - notes_idem.changed == false
+
+    - name: Test Tag Coexistence (hv_vm_tag)
+      microsoft.hyperv.hv_vm_tag:
+        vm_name: "{{ test_vm_notes }}"
+        tags:
+          Environment: Dev
+          Project: Ansible
+        state: present
+      register: tag_add
+
+    - name: Update notes while tags exist
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_notes }}"
+        state: present
+        notes: "Final notes with tags"
+      register: notes_with_tags
+
+    - name: Assert notes with tags
+      assert:
+        that:
+          - notes_with_tags.changed == true
+          - notes_with_tags.notes == "Final notes with tags"
+
+    - name: Verify tags still exist via win_powershell
+      ansible.windows.win_powershell:
+        script: |
+          (Get-VM -Name "{{ test_vm_notes }}").Notes
+      register: final_notes_field
+
+    - name: Assert tags preserved
+      assert:
+        that:
+          - "'[AnsibleTag]' in final_notes_field.output[0]"
+          - "'Environment: Dev' in final_notes_field.output[0]"
+          - "'Final notes with tags' in final_notes_field.output[0]"
+
+  always:
+    - name: Cleanup Notes VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_notes }}"
+        state: absent
+      ignore_errors: true

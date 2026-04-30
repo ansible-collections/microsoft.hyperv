@@ -4,6 +4,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
+#AnsibleRequires -PowerShell ansible_collections.microsoft.hyperv.plugins.module_utils.HyperV
 
 $spec = @{
     options = @{
@@ -21,50 +22,6 @@ $ansibleTags = $module.Params.tags
 $state = $module.Params.state
 
 $module.Result.vm_name = $vm_name
-$TAG_PREFIX = "[AnsibleTag]"
-
-Function ConvertFrom-VMNote {
-    param ([string]$Notes)
-    $parsedTags = @{}
-    $nonTagNotes = @()
-
-    if ([string]::IsNullOrWhiteSpace($Notes)) {
-        return @{ Tags = $parsedTags; NonTags = $nonTagNotes }
-    }
-
-    $lines = $Notes -split "`r`n|`n"
-    foreach ($line in $lines) {
-        if ($line.StartsWith($TAG_PREFIX)) {
-            $tagStr = $line.Substring($TAG_PREFIX.Length).Trim()
-            $idx = $tagStr.IndexOf(":")
-            if ($idx -gt 0) {
-                $key = $tagStr.Substring(0, $idx).Trim()
-                $value = $tagStr.Substring($idx + 1).Trim()
-                $parsedTags[$key] = $value
-            }
-        }
-        else {
-            $nonTagNotes += $line
-        }
-    }
-    return @{ Tags = $parsedTags; NonTags = $nonTagNotes }
-}
-
-Function ConvertTo-VMNote {
-    param ([hashtable]$Tags, [array]$NonTags)
-    $lines = @()
-    if ($NonTags -and $NonTags.Count -gt 0) {
-        $lines += $NonTags
-    }
-
-    # Sort keys for consistent output (idempotency)
-    $keys = @($Tags.Keys | Sort-Object)
-    foreach ($k in $keys) {
-        $lines += "$TAG_PREFIX $($k): $($Tags[$k])"
-    }
-
-    return ($lines -join "`n")
-}
 
 try {
     $vm = Get-VM -Name $vm_name -ErrorAction SilentlyContinue
@@ -72,9 +29,9 @@ try {
         $module.FailJson("Virtual Machine '$vm_name' not found.")
     }
 
-    $parsedData = ConvertFrom-VMNote -Notes $vm.Notes
+    $parsedData = ConvertFrom-VMNote -VM $vm
     $currentTags = $parsedData.Tags
-    $nonTags = $parsedData.NonTags
+    $nonTags = $parsedData.Notes
 
     $changed = $false
     $newTags = $currentTags.Clone()
@@ -128,7 +85,7 @@ try {
     }
 
     if ($changed) {
-        $newNotesString = ConvertTo-VMNote -Tags $newTags -NonTags $nonTags
+        $newNotesString = ConvertTo-VMNote -NoteData @{ Tags = $newTags; Notes = $nonTags }
         Set-VM -VM $vm -Notes $newNotesString -ErrorAction Stop | Out-Null
     }
 
