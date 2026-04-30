@@ -69,7 +69,7 @@ try {
 
         # Check conditions
         $heartbeatOk = if ($wait_for_heartbeat) {
-            $vm.Heartbeat -eq "Ok"
+            $vm.Heartbeat -like "Ok*"
         }
         else {
             $true
