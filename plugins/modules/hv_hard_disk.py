@@ -31,6 +31,13 @@ options:
     type: str
     choices: [ present, absent ]
     default: present
+  controller_type:
+    description:
+      - The type of controller to attach the disk to.
+      - Generation 1 VMs support C(IDE) and C(SCSI).
+      - Generation 2 VMs support C(SCSI) and C(PMEM).
+    type: str
+    choices: [ IDE, SCSI, PMEM ]
   controller_number:
     description:
       - The index of the controller to attach the disk to.

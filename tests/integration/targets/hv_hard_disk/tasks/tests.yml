@@ -3,6 +3,7 @@
   microsoft.hyperv.hv_hard_disk:
     vm_name: "{{ test_vm_name }}"
     path: "{{ test_vhd_path }}"
+    controller_type: SCSI
     state: present
   check_mode: true
   register: disk_attach_check
@@ -12,11 +13,13 @@
     that:
       - disk_attach_check.changed == true
       - disk_attach_check.state == 'present'
+      - disk_attach_check.controller_type == 'SCSI'
 
 - name: Test - Attach hard disk
   microsoft.hyperv.hv_hard_disk:
     vm_name: "{{ test_vm_name }}"
     path: "{{ test_vhd_path }}"
+    controller_type: SCSI
     state: present
   register: disk_attach
 
@@ -25,6 +28,7 @@
     that:
       - disk_attach.changed == true
       - disk_attach.state == 'present'
+      - disk_attach.controller_type == 'SCSI'
 
 - name: Test - Idempotency (Attach)
   microsoft.hyperv.hv_hard_disk:
