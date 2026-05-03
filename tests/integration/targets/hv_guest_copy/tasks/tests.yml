@@ -1,0 +1,40 @@
+---
+# Testing PowerShell Direct requires the VM to be fully booted with Integration Services responding.
+# Since our CI environment creates empty, unformatted test VMs, we cannot establish a PSSession 
+# with valid guest credentials. We will test the robust failure and validation paths.
+
+- name: Test - Validation (Missing Source Host File)
+  microsoft.hyperv.hv_guest_copy:
+    vm_name: "{{ test_vm_direct }}"
+    action: copy_in
+    src: "C:\\DoesNot\\Exist.txt"
+    dest: "C:\\InGuest.txt"
+    guest_credential:
+      username: admin
+      password: password
+  register: val_src
+  ignore_errors: true
+
+- name: Assert Missing Host File
+  assert:
+    that:
+      - val_src.failed == true
+      - "('does not exist on the Hyper-V host' in val_src.msg)"
+
+- name: Test - Execution Failure (VM not booted/No OS)
+  microsoft.hyperv.hv_guest_copy:
+    vm_name: "{{ test_vm_direct }}"
+    action: copy_in
+    src: "{{ host_src_file }}"
+    dest: "{{ guest_dest_file }}"
+    guest_credential:
+      username: admin
+      password: password
+  register: copy_fail
+  ignore_errors: true
+
+- name: Assert Execution Failure (VMBus timeout/No OS)
+  assert:
+    that:
+      - copy_fail.failed == true
+      - "'PowerShell Direct VMBus connection failed' in copy_fail.msg"

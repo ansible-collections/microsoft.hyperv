@@ -1,0 +1,4 @@
+---
+minor_changes:
+  - hv_guest_command - Execute PowerShell scripts in Hyper-V Guest OS via PowerShell Direct.
+  - hv_guest_copy - Transfer files to and from Hyper-V Guest OS via PowerShell Direct.

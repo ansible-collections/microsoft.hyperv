@@ -1,0 +1,20 @@
+---
+# Testing PowerShell Direct requires the VM to be fully booted with Integration Services responding.
+# Since our CI environment creates empty, unformatted test VMs, we cannot establish a PSSession 
+# with valid guest credentials. We will test the robust failure and validation paths.
+
+- name: Test - Execution Failure (VM not booted/No OS)
+  microsoft.hyperv.hv_guest_command:
+    vm_name: "{{ test_vm_direct }}"
+    script: "Get-Process"
+    guest_credential:
+      username: admin
+      password: password
+  register: exec_fail
+  ignore_errors: true
+
+- name: Assert Execution Failure (VMBus timeout/No OS)
+  assert:
+    that:
+      - exec_fail.failed == true
+      - "'PowerShell Direct VMBus connection failed' in exec_fail.msg"
