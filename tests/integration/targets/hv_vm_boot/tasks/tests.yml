@@ -73,16 +73,17 @@
       - boot_gen2_order.changed == true
       - boot_gen2_order.boot_order[0] == "SCSI"
 
-- name: Test Gen2 - Idempotency BootOrder
+- name: Test Gen2 - Set BootOrder (Drop unlisted items)
   microsoft.hyperv.hv_vm_boot:
     name: "{{ test_gen2 }}"
     boot_order:
       - SCSI
-      - Network
-      - DVD
-  register: boot_gen2_order_idem
+  register: boot_gen2_order_drop
 
-- name: Assert Gen2 BootOrder Idempotency
+- name: Assert Gen2 BootOrder Drop
   assert:
     that:
-      - boot_gen2_order_idem.changed == false
+      - boot_gen2_order_drop.changed == true
+      - boot_gen2_order_drop.boot_order[0] == "SCSI"
+      - "'Network' not in boot_gen2_order_drop.boot_order"
+      - "'DVD' not in boot_gen2_order_drop.boot_order"

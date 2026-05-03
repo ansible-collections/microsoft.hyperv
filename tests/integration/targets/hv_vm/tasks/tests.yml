@@ -143,3 +143,6 @@
         name: "{{ test_vm_logic }}"
         state: absent
       ignore_errors: true
+
+- name: Run VM Notes tests
+  ansible.builtin.include_tasks: notes_test.yml

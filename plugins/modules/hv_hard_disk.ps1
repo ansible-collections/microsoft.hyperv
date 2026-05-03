@@ -10,6 +10,7 @@ $spec = @{
     options = @{
         vm_name = @{ type = "str"; required = $true }
         path = @{ type = "str"; required = $true }
+        controller_type = @{ type = "str"; choices = @("IDE", "SCSI", "PMEM") }
         controller_number = @{ type = "int" }
         controller_location = @{ type = "int" }
         state = @{ type = "str"; default = "present"; choices = @("present", "absent") }
@@ -22,6 +23,7 @@ $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 $vm_name = $module.Params.vm_name
 $path = $module.Params.path
 $state = $module.Params.state
+$controller_type = $module.Params.controller_type
 $controller_number = $module.Params.controller_number
 $controller_location = $module.Params.controller_location
 
@@ -32,6 +34,7 @@ $module.Result.state = $state
 # Property map for result mapping and basic matching
 $propertyMap = @(
     @{ Param = "path"; Property = "Path"; Type = "string" }
+    @{ Param = "controller_type"; Property = "ControllerType"; Type = "string" }
     @{ Param = "controller_number"; Property = "ControllerNumber"; Type = "int" }
     @{ Param = "controller_location"; Property = "ControllerLocation"; Type = "int" }
 )
@@ -67,15 +70,14 @@ try {
 
             if (-not $changed) {
                 # Check for controller relocation
-                if ($null -ne $controller_number -and $existingDrive.ControllerNumber -ne $controller_number) {
-
+                if ($null -ne $controller_type -and $existingDrive.ControllerType -ne $controller_type) {
                     $changed = $true
-
+                }
+                if ($null -ne $controller_number -and $existingDrive.ControllerNumber -ne $controller_number) {
+                    $changed = $true
                 }
                 if ($null -ne $controller_location -and $existingDrive.ControllerLocation -ne $controller_location) {
-
                     $changed = $true
-
                 }
             }
 
@@ -84,15 +86,14 @@ try {
             if ($module.CheckMode) {
                 if ($changed) {
                     $module.Result.path = $fullPath
+                    if ($null -ne $controller_type) {
+                        $module.Result.controller_type = $controller_type
+                    }
                     if ($null -ne $controller_number) {
-
                         $module.Result.controller_number = $controller_number
-
                     }
                     if ($null -ne $controller_location) {
-
                         $module.Result.controller_location = $controller_location
-
                     }
                 }
                 else {
@@ -111,15 +112,14 @@ try {
                     VMName = $vm_name
                     Path = $fullPath
                 }
+                if ($null -ne $controller_type) {
+                    $addParams.ControllerType = $controller_type
+                }
                 if ($null -ne $controller_number) {
-
                     $addParams.ControllerNumber = $controller_number
-
                 }
                 if ($null -ne $controller_location) {
-
                     $addParams.ControllerLocation = $controller_location
-
                 }
 
                 $existingDrive = Add-VMHardDiskDrive @addParams -Passthru

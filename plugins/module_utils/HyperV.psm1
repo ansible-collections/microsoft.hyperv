@@ -289,4 +289,81 @@ Function Test-IPInCidr {
     }
 }
 
-Export-ModuleMember -Function Convert-ToByte, Get-HyperVParametersFromMap, Test-HyperVPropertiesChanged, Set-HyperVResultFromMap, Test-IPInCidr
+<#
+.SYNOPSIS
+Parses the Hyper-V VM Notes field into structured Tags and raw Notes.
+
+.DESCRIPTION
+The VM Notes field is used by Ansible to store structured metadata (Tags).
+This function splits the string into a dictionary of tags and a string of non-tag notes.
+#>
+Function ConvertFrom-VMNote {
+    param (
+        [Parameter(Mandatory = $true)]
+        $VM
+    )
+
+    process {
+        $TAG_PREFIX = "[AnsibleTag]"
+        $parsedTags = @{}
+        $nonTagNotes = @()
+        $notesStr = $VM.Notes
+
+        if ([string]::IsNullOrWhiteSpace($notesStr)) {
+            return @{ Tags = $parsedTags; Notes = "" }
+        }
+
+        $lines = $notesStr -split "`r`n|`n"
+        foreach ($line in $lines) {
+            if ($line.StartsWith($TAG_PREFIX)) {
+                $tagContent = $line.Substring($TAG_PREFIX.Length).Trim()
+                $idx = $tagContent.IndexOf(":")
+                if ($idx -gt 0) {
+                    $key = $tagContent.Substring(0, $idx).Trim()
+                    $value = $tagContent.Substring($idx + 1).Trim()
+                    $parsedTags[$key] = $value
+                }
+            }
+            else {
+                $nonTagNotes += $line
+            }
+        }
+        return @{ Tags = $parsedTags; Notes = ($nonTagNotes -join "`n").Trim() }
+    }
+}
+
+<#
+.SYNOPSIS
+Serializes a NoteData object back into a string for the VM Notes field.
+
+.DESCRIPTION
+Combines raw notes and structured tags back into a single string.
+Tags are sorted to ensure idempotency.
+#>
+Function ConvertTo-VMNote {
+    param (
+        [Parameter(Mandatory = $true)]
+        [hashtable]$NoteData
+    )
+
+    process {
+        $TAG_PREFIX = "[AnsibleTag]"
+        $lines = @()
+
+        if ($null -ne $NoteData.Notes -and $NoteData.Notes -ne "") {
+            $lines += $NoteData.Notes
+        }
+
+        if ($null -ne $NoteData.Tags) {
+            $keys = @($NoteData.Tags.Keys | Sort-Object)
+            foreach ($k in $keys) {
+                $lines += "$TAG_PREFIX $($k): $($NoteData.Tags[$k])"
+            }
+        }
+
+        return ($lines -join "`n")
+    }
+}
+
+Export-ModuleMember -Function Convert-ToByte, Get-HyperVParametersFromMap, Test-HyperVPropertiesChanged, Set-HyperVResultFromMap, `
+    Test-IPInCidr, ConvertFrom-VMNote, ConvertTo-VMNote
