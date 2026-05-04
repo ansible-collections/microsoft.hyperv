@@ -77,6 +77,17 @@ try {
         }
     }
 
+    # Also check if the notes field format needs correction (enforce empty line standard)
+    $currentFullNotes = if ($null -ne $vm.Notes) { $vm.Notes } else { "" }
+    $desiredFullNotes = ConvertTo-VMNote -NoteData @{ Tags = $newTags; Notes = $nonTags }
+
+    $currentFullNormalized = $currentFullNotes -replace "`r`n", "`n"
+    $desiredFullNormalized = $desiredFullNotes -replace "`r`n", "`n"
+
+    if ($currentFullNormalized -ne $desiredFullNormalized) {
+        $changed = $true
+    }
+
     $module.Result.changed = $changed
     $module.Result.tags = $newTags
 
@@ -85,8 +96,7 @@ try {
     }
 
     if ($changed) {
-        $newNotesString = ConvertTo-VMNote -NoteData @{ Tags = $newTags; Notes = $nonTags }
-        Set-VM -VM $vm -Notes $newNotesString -ErrorAction Stop | Out-Null
+        Set-VM -VM $vm -Notes $desiredFullNotes -ErrorAction Stop | Out-Null
     }
 
     $module.ExitJson()

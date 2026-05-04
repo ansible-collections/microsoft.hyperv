@@ -351,10 +351,13 @@ Function ConvertTo-VMNote {
         $lines = @()
 
         if ($null -ne $NoteData.Notes -and $NoteData.Notes -ne "") {
-            $lines += $NoteData.Notes
+            $lines += $NoteData.Notes.Trim()
         }
 
-        if ($null -ne $NoteData.Tags) {
+        if ($null -ne $NoteData.Tags -and $NoteData.Tags.Count -gt 0) {
+            if ($lines.Count -gt 0) {
+                $lines += "" # Add one empty line between notes and tags
+            }
             $keys = @($NoteData.Tags.Keys | Sort-Object)
             foreach ($k in $keys) {
                 $lines += "$TAG_PREFIX $($k): $($NoteData.Tags[$k])"

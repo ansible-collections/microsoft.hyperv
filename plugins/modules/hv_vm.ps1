@@ -56,20 +56,23 @@ try {
             }
             # Manage Notes (Tag-Safe)
             if ($module.Params.ContainsKey("notes")) {
-                # Fetch current state including tags
+                # Fetch current state
                 $currentNotesData = ConvertFrom-VMNote -VM $vm
-                $currentRawNotes = $currentNotesData.Notes
+                $currentFullNotes = if ($null -ne $vm.Notes) { $vm.Notes } else { "" }
 
-                # Normalize null/empty notes to empty string, and standardize line endings for comparison
-                $desiredRawNotes = if ($null -ne $notes) { $notes -replace "`r`n", "`n" } else { "" }
-                $currentNormalized = if ($null -ne $currentRawNotes) { $currentRawNotes -replace "`r`n", "`n" } else { "" }
+                # Prepare desired state
+                $desiredRawNotes = if ($null -ne $notes) { $notes.Trim() } else { "" }
+                $currentNotesData.Notes = $desiredRawNotes
+                $desiredFullNotes = ConvertTo-VMNote -NoteData $currentNotesData
 
-                if ($currentNormalized -ne $desiredRawNotes) {
+                # Standardize line endings for comparison
+                $currentFullNormalized = $currentFullNotes -replace "`r`n", "`n"
+                $desiredFullNormalized = $desiredFullNotes -replace "`r`n", "`n"
+
+                if ($currentFullNormalized -ne $desiredFullNormalized) {
                     $changed = $true
                     if (-not $module.CheckMode) {
-                        $currentNotesData.Notes = $desiredRawNotes
-                        $finalNoteString = ConvertTo-VMNote -NoteData $currentNotesData
-                        Set-VM -VM $vm -Notes $finalNoteString -ErrorAction Stop | Out-Null
+                        Set-VM -VM $vm -Notes $desiredFullNotes -ErrorAction Stop | Out-Null
                     }
                 }
             }
