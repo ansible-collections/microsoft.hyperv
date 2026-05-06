@@ -57,6 +57,18 @@
         that:
           - notes_idem.changed == false
 
+    - name: Update notes with trailing newline (Idempotency check)
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_notes }}"
+        state: present
+        notes: "Updated actual notes\n"
+      register: notes_newline_idem
+
+    - name: Assert notes with newline idempotency
+      assert:
+        that:
+          - notes_newline_idem.changed == false
+
     - name: Test Tag Coexistence (hv_vm_tag)
       microsoft.hyperv.hv_vm_tag:
         vm_name: "{{ test_vm_notes }}"
@@ -79,6 +91,44 @@
           - notes_with_tags.changed == true
           - notes_with_tags.notes == "Final notes with tags"
 
+    - name: Update notes while tags exist again (Idempotency with tags)
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_notes }}"
+        state: present
+        notes: "Final notes with tags"
+      register: notes_with_tags_idem
+
+    - name: Assert notes with tags idempotency
+      assert:
+        that:
+          - notes_with_tags_idem.changed == false
+
+    - name: Test multi-line notes idempotency with tags
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_notes }}"
+        state: present
+        notes: |
+          note 1
+          note 2
+          note 3
+      register: notes_multiline_1
+
+    - name: Second run multi-line notes
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_notes }}"
+        state: present
+        notes: |
+          note 1
+          note 2
+          note 3
+      register: notes_multiline_2
+
+    - name: Assert multi-line idempotency
+      assert:
+        that:
+          - notes_multiline_1.changed == true
+          - notes_multiline_2.changed == false
+
     - name: Verify tags still exist via win_powershell
       ansible.windows.win_powershell:
         script: |
@@ -90,7 +140,8 @@
         that:
           - "'[AnsibleTag]' in final_notes_field.output[0]"
           - "'Environment: Dev' in final_notes_field.output[0]"
-          - "'Final notes with tags' in final_notes_field.output[0]"
+          - "'note 1' in final_notes_field.output[0]"
+          - "'note 1\nnote 2\nnote 3\n\n[AnsibleTag]' in (final_notes_field.output[0] | replace('\r\n', '\n'))"
 
   always:
     - name: Cleanup Notes VM
