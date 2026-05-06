@@ -365,5 +365,53 @@ Function ConvertTo-VMNote {
     }
 }
 
+<#
+.SYNOPSIS
+Validates VM state and constructs a PSCredential for PowerShell Direct.
+
+.DESCRIPTION
+Common logic for hv_guest_* modules. Finds the VM, verifies it is running,
+and converts the Ansible credential dictionary into a PSCredential.
+
+.PARAMETER Module
+The $module object.
+.PARAMETER VMName
+The name of the VM.
+.PARAMETER CredDict
+The dictionary containing 'username' and 'password'.
+#>
+Function Get-HyperVGuestCredential {
+    param (
+        [Parameter(Mandatory = $true)]
+        $Module,
+
+        [Parameter(Mandatory = $true)]
+        [string]$VMName,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$CredDict
+    )
+
+    process {
+        # Check VM State
+        $vmObjs = @(Get-VM -Name $VMName -ErrorAction Ignore)
+        if ($vmObjs.Count -eq 0) {
+            $global:Error.Clear(); $Module.FailJson("Virtual Machine '$VMName' not found.")
+        }
+        if ($vmObjs.Count -gt 1) {
+            $Module.FailJson("Ambiguous VM name: Multiple Virtual Machines found with name '$VMName'. Please ensure VM names are unique.")
+        }
+        $vm = $vmObjs[0]
+
+        if ($vm.State -ne "Running") {
+            $global:Error.Clear(); $Module.FailJson("Virtual Machine '$VMName' must be in the 'Running' state to use PowerShell Direct.")
+        }
+
+        # Construct Credential Object
+        $secPass = ConvertTo-SecureString $CredDict.password -AsPlainText -Force
+        return New-Object System.Management.Automation.PSCredential ($CredDict.username, $secPass)
+    }
+}
+
 Export-ModuleMember -Function Convert-ToByte, Get-HyperVParametersFromMap, Test-HyperVPropertiesChanged, Set-HyperVResultFromMap, `
-    Test-IPInCidr, ConvertFrom-VMNote, ConvertTo-VMNote
+    Test-IPInCidr, ConvertFrom-VMNote, ConvertTo-VMNote, Get-HyperVGuestCredential

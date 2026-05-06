@@ -1,0 +1,26 @@
+---
+- name: Define test VM
+  set_fact:
+    test_vm_direct: "AnsibleDirectVM_Cmd_{{ 99999 | random }}"
+    
+- block:
+    - name: Setup - Create VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_direct }}"
+        state: present
+        generation: 2
+
+    - name: Setup - Start VM
+      microsoft.hyperv.hv_vm_state:
+        name: "{{ test_vm_direct }}"
+        state: running
+
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove Test VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_direct }}"
+        state: absent
+      ignore_errors: true

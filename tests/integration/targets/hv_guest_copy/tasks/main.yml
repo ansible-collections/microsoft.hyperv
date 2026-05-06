@@ -1,0 +1,44 @@
+---
+- name: Define test VM and file paths
+  set_fact:
+    test_vm_direct: "AnsibleDirectVM_Copy_{{ 99999 | random }}"
+    host_src_file: "C:\\Users\\Public\\Documents\\test_in_{{ 99999 | random }}.txt"
+    guest_dest_file: "C:\\test_in.txt"
+    guest_src_file: "C:\\test_out.txt"
+    host_dest_file: "C:\\Users\\Public\\Documents\\test_out_{{ 99999 | random }}.txt"
+    
+- block:
+    - name: Setup - Create VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_direct }}"
+        state: present
+        generation: 2
+
+    - name: Setup - Start VM
+      microsoft.hyperv.hv_vm_state:
+        name: "{{ test_vm_direct }}"
+        state: running
+
+    - name: Setup - Create Host File
+      ansible.windows.win_copy:
+        content: "File to be copied inside VM"
+        dest: "{{ host_src_file }}"
+
+    - name: Run tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove Host Files
+      ansible.windows.win_file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ host_src_file }}"
+        - "{{ host_dest_file }}"
+      ignore_errors: true
+
+    - name: Teardown - Remove Test VM
+      microsoft.hyperv.hv_vm:
+        name: "{{ test_vm_direct }}"
+        state: absent
+      ignore_errors: true
