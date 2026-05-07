@@ -1,0 +1,69 @@
+---
+# Hardware passthrough requires specialized hardware (GPUs/PCIe devices) 
+# and often host-level preparation (dismounting drivers). 
+# We'll test parameter validation and robust failure handling.
+
+- name: Test - Validation (Missing Path for DDA)
+  microsoft.hyperv.hv_hardware_passthrough:
+    vm_name: "{{ test_vm_passthrough }}"
+    device_type: dda
+    state: present
+  register: val_fail
+  ignore_errors: true
+
+- name: Assert Validation Failure
+  assert:
+    that:
+      - val_fail.failed == true
+      - " 'device_location_path' in val_fail.msg "
+      - " 'parameter is required' in val_fail.msg "
+
+- name: Test - Failure (Invalid DDA Path)
+  microsoft.hyperv.hv_hardware_passthrough:
+    vm_name: "{{ test_vm_passthrough }}"
+    device_type: dda
+    device_location_path: "PCIROOT(0)#PCI(9999)#PCI(0000)"
+    state: present
+  register: dda_fail
+  ignore_errors: true
+
+- name: Assert DDA Execution Failure
+  assert:
+    that:
+      - dda_fail.failed == true
+
+- name: Test - GPU Partitioning Adapter Addition
+  microsoft.hyperv.hv_hardware_passthrough:
+    vm_name: "{{ test_vm_passthrough }}"
+    device_type: gpu_partition
+    state: present
+  register: gpup_add
+
+- name: Assert GPU-P Addition
+  assert:
+    that:
+      - gpup_add.changed == true
+
+- name: Test - GPU-P Idempotency
+  microsoft.hyperv.hv_hardware_passthrough:
+    vm_name: "{{ test_vm_passthrough }}"
+    device_type: gpu_partition
+    state: present
+  register: gpup_idem
+
+- name: Assert GPU-P Idempotency
+  assert:
+    that:
+      - gpup_idem.changed == false
+
+- name: Test - GPU-P Removal
+  microsoft.hyperv.hv_hardware_passthrough:
+    vm_name: "{{ test_vm_passthrough }}"
+    device_type: gpu_partition
+    state: absent
+  register: gpup_rm
+
+- name: Assert GPU-P Removal
+  assert:
+    that:
+      - gpup_rm.changed == true
