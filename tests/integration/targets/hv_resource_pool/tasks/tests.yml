@@ -1,0 +1,63 @@
+---
+- name: Test - Initial Change (Create Processor Pool)
+  microsoft.hyperv.hv_resource_pool:
+    name: "{{ test_pool_name }}"
+    pool_type: Processor
+    state: present
+  register: result_create
+
+- name: Assert Initial Change
+  assert:
+    that:
+      - result_create.changed == true
+      - result_create.state == 'present'
+
+- name: Test - Idempotency (Create Processor Pool)
+  microsoft.hyperv.hv_resource_pool:
+    name: "{{ test_pool_name }}"
+    pool_type: Processor
+    state: present
+  register: result_create_idem
+
+- name: Assert Idempotency
+  assert:
+    that:
+      - result_create_idem.changed == false
+
+- name: Test - Check Mode (Create Memory Pool)
+  microsoft.hyperv.hv_resource_pool:
+    name: "{{ test_pool_name }}"
+    pool_type: Memory
+    state: present
+  check_mode: true
+  register: result_mem_check
+
+- name: Assert Check Mode
+  assert:
+    that:
+      - result_mem_check.changed == true
+
+- name: Test - Actual Create Memory Pool
+  microsoft.hyperv.hv_resource_pool:
+    name: "{{ test_pool_name }}"
+    pool_type: Memory
+    state: present
+  register: result_mem
+
+- name: Assert Actual Create
+  assert:
+    that:
+      - result_mem.changed == true
+
+- name: Test - Absent (Remove Processor Pool)
+  microsoft.hyperv.hv_resource_pool:
+    name: "{{ test_pool_name }}"
+    pool_type: Processor
+    state: absent
+  register: result_remove
+
+- name: Assert Absent
+  assert:
+    that:
+      - result_remove.changed == true
+      - result_remove.state == 'absent'
