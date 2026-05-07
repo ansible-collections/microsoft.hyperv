@@ -1,0 +1,66 @@
+---
+- name: Test - Initial Change (Enable Nested Virt)
+  microsoft.hyperv.hv_nested_virt:
+    vm_name: "{{ test_vm_nested }}"
+    state: enabled
+  register: result_enable
+
+- name: Assert Initial Change
+  assert:
+    that:
+      - result_enable.changed == true
+      - result_enable.state == 'enabled'
+
+- name: Test - Idempotency (Enable Nested Virt)
+  microsoft.hyperv.hv_nested_virt:
+    vm_name: "{{ test_vm_nested }}"
+    state: enabled
+  register: result_enable_idem
+
+- name: Assert Idempotency
+  assert:
+    that:
+      - result_enable_idem.changed == false
+
+- name: Test - Check Mode (Disable Nested Virt)
+  microsoft.hyperv.hv_nested_virt:
+    vm_name: "{{ test_vm_nested }}"
+    state: disabled
+  check_mode: true
+  register: result_disable_check
+
+- name: Assert Check Mode
+  assert:
+    that:
+      - result_disable_check.changed == true
+
+- name: Test - Actual Disable
+  microsoft.hyperv.hv_nested_virt:
+    vm_name: "{{ test_vm_nested }}"
+    state: disabled
+  register: result_disable
+
+- name: Assert Actual Disable
+  assert:
+    that:
+      - result_disable.changed == true
+      - result_disable.state == 'disabled'
+
+- name: Setup - Start VM (to test failure on running VM)
+  microsoft.hyperv.hv_vm_state:
+    name: "{{ test_vm_nested }}"
+    state: running
+
+- name: Test - Failure on Running VM
+  microsoft.hyperv.hv_nested_virt:
+    vm_name: "{{ test_vm_nested }}"
+    state: enabled
+  register: result_fail
+  ignore_errors: true
+
+- name: Assert Failure
+  assert:
+    that:
+      - result_fail.failed == true
+      - " 'must be in the ' in result_fail.msg "
+      - " 'Off' in result_fail.msg "
