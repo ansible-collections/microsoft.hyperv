@@ -27,13 +27,18 @@ $module.Result.state = ""
 $module.Result.checkpoint = $null
 
 try {
-    $vm = Get-VM -Name $vm_name -ErrorAction SilentlyContinue
+    $vmObjs = @(Get-VM -Name $vm_name -ErrorAction Ignore)
 
-    if (-not $vm) {
-        $module.FailJson("Virtual Machine '$vm_name' not found.")
+    if ($vmObjs.Count -eq 0) {
+        $global:Error.Clear(); $module.FailJson("Virtual Machine '$vm_name' not found.")
     }
+    if ($vmObjs.Count -gt 1) {
+        $global:Error.Clear()
+        $module.FailJson("Ambiguous VM name: Multiple Virtual Machines found with name '$vm_name'. Please ensure VM names are unique.")
+    }
+    $vm = $vmObjs[0]
 
-    $snapshot = Get-VMSnapshot -VMName $vm_name -Name $name -ErrorAction SilentlyContinue
+    $snapshot = Get-VMSnapshot -VMName $vm_name -Name $name -ErrorAction Ignore
 
     switch ($state) {
         "present" {
@@ -60,7 +65,23 @@ try {
             }
 
             Checkpoint-VM -Name $vm_name -SnapshotName $name | Out-Null
-            $snapshot = Get-VMSnapshot -VMName $vm_name -Name $name
+
+            # Retry loop to handle Hyper-V snapshot registration delay
+            $retryCount = 0
+            $maxRetries = 10
+            while ($retryCount -lt $maxRetries) {
+                $snapshot = Get-VMSnapshot -VMName $vm_name -Name $name -ErrorAction Ignore
+                if ($snapshot) {
+                    break
+                }
+                Start-Sleep -Seconds 1
+                $retryCount++
+            }
+
+            if (-not $snapshot) {
+                $global:Error.Clear()
+                $module.FailJson("Checkpoint was created but could not be retrieved from Hyper-V after $maxRetries seconds.")
+            }
         }
         "absent" {
             if (-not $snapshot) {
@@ -124,5 +145,5 @@ try {
     $module.ExitJson()
 }
 catch {
-    $module.FailJson("Failed to manage VM Checkpoint: $($_.Exception.Message)")
+    $global:Error.Clear(); $module.FailJson("Failed to manage VM Checkpoint: $($_.Exception.Message)")
 }
