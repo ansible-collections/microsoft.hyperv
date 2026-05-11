@@ -66,7 +66,7 @@ try {
     }
 
     # 2. Check Network Change
-    if ($currentMacSpoofing -ne $desiredMacSpoofing) {
+    if ($currentMacSpoofing -ne $desiredMacSpoofing -and $adapters) {
         $changed = $true
         if (-not $module.CheckMode) {
             Set-VMNetworkAdapter -VMName $vm_name -MacAddressSpoofing $desiredMacSpoofing -ErrorAction Stop
