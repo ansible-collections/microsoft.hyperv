@@ -21,3 +21,10 @@
         pool_type: Memory
         state: absent
       ignore_errors: true
+
+    - name: Teardown - Remove ISO Pool
+      microsoft.hyperv.hv_resource_pool:
+        name: "{{ test_pool_name }}_ISO"
+        pool_type: ISO
+        state: absent
+      ignore_errors: true

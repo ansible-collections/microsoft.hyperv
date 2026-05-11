@@ -49,6 +49,32 @@
     that:
       - result_mem.changed == true
 
+- name: Test - Create ISO Pool with Paths
+  microsoft.hyperv.hv_resource_pool:
+    name: "{{ test_pool_name }}_ISO"
+    pool_type: ISO
+    paths: ["C:\\Temp"]
+    state: present
+  register: result_iso
+
+- name: Assert ISO Pool
+  assert:
+    that:
+      - result_iso.changed == true
+
+- name: Test - ISO Pool Idempotency
+  microsoft.hyperv.hv_resource_pool:
+    name: "{{ test_pool_name }}_ISO"
+    pool_type: ISO
+    paths: ["C:\\Temp"]
+    state: present
+  register: result_iso_idem
+
+- name: Assert ISO Pool Idempotency
+  assert:
+    that:
+      - result_iso_idem.changed == false
+
 - name: Test - Absent (Remove Processor Pool)
   microsoft.hyperv.hv_resource_pool:
     name: "{{ test_pool_name }}"

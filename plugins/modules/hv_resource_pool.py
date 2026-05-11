@@ -24,6 +24,17 @@ options:
     type: str
     required: true
     choices: [ Processor, Memory, Ethernet, VHD, ISO, VFD, FibreChannelConnection, PciExpress ]
+  parent_name:
+    description:
+      - The name of the parent resource pool.
+      - Enables hierarchical resource pooling.
+    type: str
+  paths:
+    description:
+      - A list of physical paths associated with the resource pool.
+      - Typically used with storage-related pools (VHD, ISO, VFD).
+    type: list
+    elements: str
   state:
     description:
       - The desired state of the resource pool.
