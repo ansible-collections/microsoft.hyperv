@@ -30,6 +30,7 @@ options:
     description:
       - Whether to enable the shielded security policy.
       - If C(true), the VM is protected against fabric administrator access.
+      - If omitted, this defaults to C(true) when C(state) is C(enabled), and C(false) when C(state) is C(disabled).
     type: bool
   encryption_state:
     description:
