@@ -29,16 +29,6 @@ options:
     type: str
     required: true
     choices: [ gpu_partition, dda ]
-  gpu_name:
-    description:
-      - The name or instance ID of the physical GPU to partition.
-      - Required when C(device_type) is C(gpu_partition) and C(state) is C(present).
-    type: str
-  partition_count:
-    description:
-      - The number of partitions to create on the GPU.
-      - Used with C(device_type) is C(gpu_partition).
-    type: int
   device_location_path:
     description:
       - The PCI location path of the device to assign (e.g., "PCIROOT(0)#PCI(0300)#PCI(0000)").
@@ -61,8 +51,6 @@ EXAMPLES = r'''
   microsoft.hyperv.hv_hardware_passthrough:
     vm_name: AI-Worker-01
     device_type: gpu_partition
-    gpu_name: "NVIDIA Tesla T4"
-    partition_count: 4
     state: present
 
 - name: Assign an NVMe drive via DDA

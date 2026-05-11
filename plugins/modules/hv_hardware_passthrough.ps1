@@ -9,8 +9,6 @@ $spec = @{
     options = @{
         vm_name = @{ type = "str"; required = $true; aliases = @("name") }
         device_type = @{ type = "str"; required = $true; choices = @("gpu_partition", "dda") }
-        gpu_name = @{ type = "str" }
-        partition_count = @{ type = "int" }
         device_location_path = @{ type = "str" }
         state = @{ type = "str"; default = "present"; choices = @("present", "absent") }
     }
@@ -109,11 +107,6 @@ try {
                 }
                 # Check for property changes if adapter exists
                 # Note: GPU-P properties like partition count can be set, but often depend on the physical GPU.
-                $partition_count = $module.Params.partition_count
-                $gpu_name = $module.Params.gpu_name
-                if ($null -ne $partition_count -or $null -ne $gpu_name) {
-                    # Future implementation for property setting
-                }
             }
             "absent" {
                 if ($currentGpuAdapters) {
