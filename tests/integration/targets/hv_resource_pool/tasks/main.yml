@@ -1,0 +1,30 @@
+---
+- name: Define test resource pool name
+  set_fact:
+    test_pool_name: "AnsibleTestPool_{{ 99999 | random }}"
+
+- block:
+    - name: Run hv_resource_pool tests
+      ansible.builtin.include_tasks: tests.yml
+
+  always:
+    - name: Teardown - Remove Processor Pool
+      microsoft.hyperv.hv_resource_pool:
+        name: "{{ test_pool_name }}"
+        pool_type: Processor
+        state: absent
+      ignore_errors: true
+
+    - name: Teardown - Remove Memory Pool
+      microsoft.hyperv.hv_resource_pool:
+        name: "{{ test_pool_name }}"
+        pool_type: Memory
+        state: absent
+      ignore_errors: true
+
+    - name: Teardown - Remove ISO Pool
+      microsoft.hyperv.hv_resource_pool:
+        name: "{{ test_pool_name }}_ISO"
+        pool_type: ISO
+        state: absent
+      ignore_errors: true

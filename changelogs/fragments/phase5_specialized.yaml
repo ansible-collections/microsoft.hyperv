@@ -1,0 +1,6 @@
+---
+minor_changes:
+  - hv_hardware_passthrough - Manage GPU partitioning (GPU-P) and Discrete Device Assignment (DDA).
+  - hv_nested_virt - Enable or disable nested virtualization for Hyper-V VMs.
+  - hv_shielded_vm - Manage security settings and Key Protectors for secure VMs.
+  - hv_resource_pool - Create and manage resource pools for metering and chargeback.
