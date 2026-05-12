@@ -13,7 +13,7 @@ $spec = @{
         secure_boot_template = @{ type = "str"; choices = @("MicrosoftWindows", "MicrosoftUEFICertificateAuthority", "OpenSourceShieldedVM") }
         num_lock = @{ type = "bool" }
         startup_order = @{ type = "list"; elements = "str"; choices = @("CD", "Floppy", "IDE", "LegacyNetworkAdapter", "NetworkAdapter", "VHD") }
-        boot_order = @{ type = "list"; elements = "str"; choices = @("Network", "DVD", "SCSI", "File") }
+        boot_order = @{ type = "list"; elements = "str" }
     }
     supports_check_mode = $true
 }
@@ -128,9 +128,23 @@ try {
 
             # Pass 2: Append requested devices in exact order
             foreach ($type in $desiredTypeOrder) {
-                $match = $currentBootOrder | Where-Object { $_.Description -like "*$type*" }
-                if ($match) {
-                    $newBootOrder += @($match)
+                if ($type -match "^SCSI:(\d+):(\d+)$") {
+                    $controllerNum = [int]$matches[1]
+                    $controllerLoc = [int]$matches[2]
+                    $match = $currentBootOrder | Where-Object {
+                        $_.Device.GetType().Name -eq 'HardDiskDrive' -and
+                        $_.Device.ControllerNumber -eq $controllerNum -and
+                        $_.Device.ControllerLocation -eq $controllerLoc
+                    }
+                    if ($match) {
+                        $newBootOrder += @($match)
+                    }
+                }
+                else {
+                    $match = $currentBootOrder | Where-Object { $_.Description -like "*$type*" }
+                    if ($match) {
+                        $newBootOrder += @($match)
+                    }
                 }
             }
 
@@ -176,7 +190,13 @@ try {
                 $friendlyBootOrder += "Network"
             }
             elseif ($device.Description -like "*SCSI*") {
-                $friendlyBootOrder += "SCSI"
+                # Attempt to extract targeted SCSI info
+                if ($device.Device -and $device.Device.GetType().Name -eq 'HardDiskDrive') {
+                    $friendlyBootOrder += "SCSI:$($device.Device.ControllerNumber):$($device.Device.ControllerLocation)"
+                }
+                else {
+                    $friendlyBootOrder += "SCSI"
+                }
             }
             elseif ($device.Description -like "*DVD*") {
                 $friendlyBootOrder += "DVD"

@@ -87,3 +87,86 @@
       - boot_gen2_order_drop.boot_order[0] == "SCSI"
       - "'Network' not in boot_gen2_order_drop.boot_order"
       - "'DVD' not in boot_gen2_order_drop.boot_order"
+
+# 3. Targeted SCSI Validation (Issue #40)
+- name: Define Dummy Disk Paths
+  set_fact:
+    os_disk_path: "C:\\Users\\Public\\Documents\\test_os_scsi_{{ 99999 | random }}.vhdx"
+    dummy_disk_path: "C:\\Users\\Public\\Documents\\test_dummy_scsi_{{ 99999 | random }}.vhdx"
+
+- name: Setup - Create actual VHDX files on disk
+  ansible.windows.win_shell: |
+    New-VHD -Path '{{ os_disk_path }}' -SizeBytes 1GB -Dynamic | Out-Null
+    New-VHD -Path '{{ dummy_disk_path }}' -SizeBytes 1GB -Dynamic | Out-Null
+  
+- name: Setup - Add OS SCSI drive
+  microsoft.hyperv.hv_hard_disk:
+    vm_name: "{{ test_gen2 }}"
+    controller_type: SCSI
+    controller_number: 0
+    controller_location: 1
+    path: "{{ os_disk_path }}"
+    state: present
+
+- name: Setup - Add secondary dummy SCSI drive for targeted testing
+  microsoft.hyperv.hv_hard_disk:
+    vm_name: "{{ test_gen2 }}"
+    controller_type: SCSI
+    controller_number: 0
+    controller_location: 2
+    path: "{{ dummy_disk_path }}"
+    state: present
+  register: setup_dummy_disk
+
+- name: Test Gen2 - Set Targeted SCSI BootOrder
+  microsoft.hyperv.hv_vm_boot:
+    name: "{{ test_gen2 }}"
+    boot_order:
+      - "SCSI:0:1"
+  register: boot_gen2_scsi_target
+
+- name: Assert Targeted SCSI BootOrder
+  assert:
+    that:
+      - boot_gen2_scsi_target.changed == true
+      - "'SCSI:0:1' in boot_gen2_scsi_target.boot_order"
+      - "'SCSI:0:2' not in boot_gen2_scsi_target.boot_order"
+
+- name: Test Gen2 - Targeted SCSI Idempotency
+  microsoft.hyperv.hv_vm_boot:
+    name: "{{ test_gen2 }}"
+    boot_order:
+      - "SCSI:0:1"
+  register: boot_gen2_scsi_idem
+
+- name: Assert Targeted SCSI Idempotency
+  assert:
+    that:
+      - boot_gen2_scsi_idem.changed == false
+
+- name: Teardown - Remove OS SCSI drive from VM
+  microsoft.hyperv.hv_hard_disk:
+    vm_name: "{{ test_gen2 }}"
+    controller_type: SCSI
+    controller_number: 0
+    controller_location: 1
+    state: absent
+  ignore_errors: true
+
+- name: Teardown - Remove secondary dummy SCSI drive from VM
+  microsoft.hyperv.hv_hard_disk:
+    vm_name: "{{ test_gen2 }}"
+    controller_type: SCSI
+    controller_number: 0
+    controller_location: 2
+    state: absent
+  ignore_errors: true
+
+- name: Teardown - Delete physical VHDX files
+  ansible.windows.win_file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ os_disk_path }}"
+    - "{{ dummy_disk_path }}"
+  ignore_errors: true

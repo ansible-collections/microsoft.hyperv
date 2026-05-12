@@ -48,13 +48,14 @@ options:
     description:
       - The boot order sequence of the devices for Generation 2 VMs.
       - Accepts a list of device types - C(Network), C(DVD), C(SCSI), C(File).
+      - You can target specific SCSI controllers using the format C(SCSI:<ControllerNumber>:<ControllerLocation>) (e.g., C(SCSI:0:0)).
       - Any standard device (Network, DVD, SCSI) NOT listed will be removed from the boot order.
+      - If specific SCSI controllers are targeted, any unlisted SCSI devices will be removed.
       - OS-injected bootloaders (e.g., Linux GRUB C(File) entries) will automatically be preserved at the top of the
         boot order unless C(File) is explicitly listed in your sequence, in which case it follows your exact ordering.
       - Supported on Generation 2 Virtual Machines only.
     type: list
     elements: str
-    choices: [ Network, DVD, SCSI, File ]
 author:
   - Ansible Cloud Team (@ansible)
 '''
