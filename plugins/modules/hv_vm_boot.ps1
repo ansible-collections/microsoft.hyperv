@@ -132,6 +132,7 @@ try {
                     $controllerNum = [int]$matches[1]
                     $controllerLoc = [int]$matches[2]
                     $match = $currentBootOrder | Where-Object {
+                        $null -ne $_.Device -and
                         $_.Device.GetType().Name -eq 'HardDiskDrive' -and
                         $_.Device.ControllerNumber -eq $controllerNum -and
                         $_.Device.ControllerLocation -eq $controllerLoc
