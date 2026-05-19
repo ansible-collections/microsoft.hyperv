@@ -85,7 +85,12 @@ The following modules are currently available and fully supported in the collect
 ### Virtual Machine Management
 - `hv_vm` - VM provisioning and deprovisioning
 - `hv_vm_state` - VM power management (start, stop, pause, save, restart)
+- `hv_vm_info` - Gather VM information
 - `hv_checkpoint` - Snapshot management
+- `hv_vm_transfer` - Export and import VMs
+- `hv_vm_move` - Live migration and storage migration
+- `hv_vm_tag` - VM tagging
+- `hv_vm_group` - VM grouping
 
 ### VM Hardware Configuration
 - `hv_processor` - vCPU management
@@ -95,29 +100,6 @@ The following modules are currently available and fully supported in the collect
 - `hv_dvd_drive` - DVD drive management
 - `hv_network_adapter` - Network adapter configuration (VLAN, MAC, QoS)
 - `hv_vm_boot` - Boot configuration (BIOS/Firmware)
-
-### Storage Management
-- `hv_vhd` - VHD/VHDX file operations
-- `hv_storage_pool` - Storage pool management
-
-### Advanced Features
-- `hv_host` - Hyper-V host configuration
-
-### Information Gathering
-- `hv_vm_info` - Gather VM information
-- `hv_host_info` - Gather Hyper-V host information
-
-## Planned Modules
-
-The following modules are planned and will be released in future updates:
-
-### Virtual Machine Management
-- `hv_vm_transfer` - Export and import VMs
-- `hv_vm_move` - Live migration
-- `hv_vm_tag` - VM tagging
-- `hv_vm_group` - VM grouping
-
-### VM Hardware Configuration
 - `hv_com_port` - COM port configuration
 - `hv_integration_service` - Integration services management
 
@@ -127,6 +109,8 @@ The following modules are planned and will be released in future updates:
 - `hv_isolation` - Network isolation settings (SDN)
 
 ### Storage Management
+- `hv_vhd` - VHD/VHDX file operations
+- `hv_storage_pool` - Storage pool management
 - `hv_san_adapter` - Fibre Channel SAN adapter management
 
 ### Replication and Migration
@@ -135,17 +119,21 @@ The following modules are planned and will be released in future updates:
 - `hv_migration_network` - Migration network settings
 
 ### Advanced Features
-- `hv_hardware_passthrough` - GPU-P and Discrete Device Assignment
-- `hv_shielded_vm` - Shielded VM configuration
-- `hv_nested_virt` - Nested virtualization
+- `hv_hardware_passthrough` - GPU-P and Discrete Device Assignment (DDA)
+- `hv_shielded_vm` - Shielded VM configuration and Key Protectors
+- `hv_nested_virt` - Nested virtualization enablement
+- `hv_host` - Hyper-V host configuration
+- `hv_host_info` - Gather Hyper-V host information
 
 ### Guest Operations
-- `hv_guest` - File copy and command execution via PowerShell Direct
+- `hv_guest_command` - Execute commands inside the guest OS via PowerShell Direct
+- `hv_guest_copy` - Bidirectional file transfers via PowerShell Direct
+- `hv_vm_guest_wait` - Wait for VM guest agent and IP addresses to become available
 
 ### Clustering
-- `hv_cluster_node_maintenance` - Cluster maintenance mode
-- `hv_cluster_group_set` - Cluster group management
-- `hv_resource_pool` - Resource pool management
+- `hv_cluster_node_maintenance` - Cluster maintenance mode (Pause/Resume node)
+- `hv_cluster_group_set` - Cluster group anti-affinity and availability sets
+- `hv_resource_pool` - Resource pool management for CPU/Memory/Storage metering
 
 ## Support
 As Red Hat Ansible Certified Content, this collection is entitled to support through the Ansible Automation Platform (AAP).
