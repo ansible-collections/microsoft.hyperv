@@ -4,6 +4,38 @@ Microsoft Hyper-V Collection Release Notes
 
 .. contents:: Topics
 
+v1.1.0
+======
+
+Minor Changes
+-------------
+
+- All existing modules - Refactored to utilize the new shared property mapping utilities, significantly improving maintainability, type-safety, and code consistency.
+- HyperV.psm1 - Introduced a suite of shared PowerShell utility functions (`Get-HyperVParametersFromMap`, `Test-HyperVPropertiesChanged`, `Set-HyperVResultFromMap`) to standardize parameter building, idempotency checks, and result population across the collection.
+- hv_cluster_group_set - Manage Hyper-V Cluster Group Sets (Anti-Affinity).
+- hv_cluster_node_maintenance - Manage Hyper-V Cluster Node Maintenance Mode.
+- hv_com_port - Manage Hyper-V Virtual Machine Serial (COM) Ports.
+- hv_guest - Manage Hyper-V Guest OS via PowerShell Direct.
+- hv_guest_command - Execute PowerShell scripts in Hyper-V Guest OS via PowerShell Direct.
+- hv_guest_copy - Transfer files to and from Hyper-V Guest OS via PowerShell Direct.
+- hv_hardware_passthrough - Manage GPU partitioning (GPU-P) and Discrete Device Assignment (DDA).
+- hv_integration_service - Manage Hyper-V Virtual Machine Integration Services.
+- hv_isolation - Manage Hyper-V Network Adapter Isolation (SDN).
+- hv_migration_network - Manage Hyper-V Migration Networks.
+- hv_nested_virt - Enable or disable nested virtualization for Hyper-V VMs.
+- hv_network_acl - Manage Standard and Extended Network Access Control Lists (ACLs) on Hyper-V virtual network adapters.
+- hv_replication - Manage Hyper-V Virtual Machine Replication.
+- hv_replication_server - Manage Hyper-V Replica Server Settings.
+- hv_resource_pool - Create and manage resource pools for metering and chargeback.
+- hv_san_adapter - Manage Hyper-V Virtual Fibre Channel HBAs.
+- hv_shielded_vm - Manage security settings and Key Protectors for secure VMs.
+- hv_vm_group - Manage Hyper-V Virtual Machine Groups.
+- hv_vm_move - Manage Hyper-V Virtual Machine Live Migration and Storage Migration.
+- hv_vm_tag - Manage Hyper-V Virtual Machine Metadata Tags.
+- hv_vm_transfer - Manage Hyper-V Virtual Machine Export and Import.
+- hv_vswitch - Manage Hyper-V Virtual Switches and extensions.
+- microsoft.hyperv.hv_vm_guest_wait - Wait for VM guest agent and IP addresses (including CIDR support) to become available
+
 v1.0.0
 ======
 

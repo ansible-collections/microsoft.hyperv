@@ -1,3 +1,0 @@
----
-minor_changes:
-  - microsoft.hyperv.hv_vm_guest_wait - Wait for VM guest agent and IP addresses (including CIDR support) to become available
