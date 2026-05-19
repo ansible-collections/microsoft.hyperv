@@ -1,3 +1,0 @@
----
-minor_changes:
-  - hv_cluster_group_set - Manage Hyper-V Cluster Group Sets (Anti-Affinity).

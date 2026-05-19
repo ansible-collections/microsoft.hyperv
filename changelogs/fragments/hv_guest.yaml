@@ -1,3 +1,0 @@
----
-minor_changes:
-  - hv_guest - Manage Hyper-V Guest OS via PowerShell Direct.
