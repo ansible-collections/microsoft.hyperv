@@ -133,6 +133,9 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+# Ansible Test Local Inventory
+tests/integration/inventory.winrm
+
 # Pyre type checker
 .pyre/
 docs/plans/

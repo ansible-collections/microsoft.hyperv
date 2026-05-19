@@ -23,5 +23,16 @@ issues: https://github.com/ansible-collections/microsoft.hyperv/issues
 build_ignore:
   # https://docs.ansible.com/projects/ansible/devel/dev_guide/developing_collections_distributing.html#ignoring-files-and-folders
   - .gitignore
+  - .gitattributes
+  - .github/
+  - .azure-pipelines/
   - .claude/
+  - .vscode/
+  - docs/plans/
+  - tests/output/
   - changelogs/.plugin-cache.yaml
+  - CODE_OF_CONDUCT.md
+  - CONTRIBUTING.md
+  - REVIEW_CHECKLIST.md
+  - codecov.yml
+  - ruvector.db
